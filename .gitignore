@@ -1,0 +1,22 @@
+# === Node/React ===
+services/node_modules/
+services/dist/
+services/dist-ssr/
+services/*.local
+services/npm-debug.log*
+services/yarn-debug.log*
+services/yarn-error.log*
+services/pnpm-debug.log*
+services/lerna-debug.log*
+
+# Editor directories and files
+.vscode/
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# 
