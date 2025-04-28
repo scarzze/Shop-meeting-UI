@@ -1,13 +1,13 @@
 # === Node/React ===
-services/node_modules/
-services/dist/
-services/dist-ssr/
-services/*.local
-services/npm-debug.log*
-services/yarn-debug.log*
-services/yarn-error.log*
-services/pnpm-debug.log*
-services/lerna-debug.log*
+node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
 # Editor directories and files
 .vscode/
