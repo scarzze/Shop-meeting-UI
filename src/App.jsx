@@ -10,6 +10,8 @@ import ProductDetail from './pages/ProductDetail';
 import Checkout from './pages/Checkout';
 import Cart from './pages/Cart';
 import About from './pages/About';
+import NotFound from './pages/NotFound';
+import Wishlist from './pages/Wishlist';
 
 
 const App = () => {
@@ -25,9 +27,9 @@ const App = () => {
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/about" element={<About />} />
-        {/* Add more routes as needed */}
-        {/* <Route path="/wishlist" element={<Wishlist />} /> */}
+        <Route path="/wishlist" element={<Wishlist />} />
         {/* <Route path="/search" element={<SearchResults />} /> */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
       <Footer />
     </div>

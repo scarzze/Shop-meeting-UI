@@ -6,6 +6,7 @@ const FlashSalesTimer = ({ deadline }) => {
     let timeLeft = {};
     if (difference > 0) {
       timeLeft = {
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
         hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
         minutes: Math.floor((difference / 1000 / 60) % 60),
         seconds: Math.floor((difference / 1000) % 60),
@@ -15,26 +16,32 @@ const FlashSalesTimer = ({ deadline }) => {
   };
 
   const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
+  
   useEffect(() => {
     const timer = setInterval(() => setTimeLeft(calculateTimeLeft()), 1000);
     return () => clearInterval(timer);
   }, []);
 
   return (
-    <div className="flex gap-4 items-center text-sm font-semibold">
-      <div className="text-center">
-        <div className="text-lg">{String(timeLeft.hours).padStart(2, '0')}</div>
-        <div className="text-xs">Hrs</div>
+    <div className="flex items-center gap-1">
+      <div className="flex flex-col items-center">
+        <div className="text-lg font-bold">{String(timeLeft.days || 0).padStart(2, '0')}</div>
+        <div className="text-xs">Days</div>
       </div>
-      <span>:</span>
-      <div className="text-center">
-        <div className="text-lg">{String(timeLeft.minutes).padStart(2, '0')}</div>
-        <div className="text-xs">Min</div>
+      <span className="text-lg font-bold mx-1">:</span>
+      <div className="flex flex-col items-center">
+        <div className="text-lg font-bold">{String(timeLeft.hours || 0).padStart(2, '0')}</div>
+        <div className="text-xs">Hours</div>
       </div>
-      <span>:</span>
-      <div className="text-center">
-        <div className="text-lg">{String(timeLeft.seconds).padStart(2, '0')}</div>
-        <div className="text-xs">Sec</div>
+      <span className="text-lg font-bold mx-1">:</span>
+      <div className="flex flex-col items-center">
+        <div className="text-lg font-bold">{String(timeLeft.minutes || 0).padStart(2, '0')}</div>
+        <div className="text-xs">Minutes</div>
+      </div>
+      <span className="text-lg font-bold mx-1">:</span>
+      <div className="flex flex-col items-center">
+        <div className="text-lg font-bold">{String(timeLeft.seconds || 0).padStart(2, '0')}</div>
+        <div className="text-xs">Seconds</div>
       </div>
     </div>
   );

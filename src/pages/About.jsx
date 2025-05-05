@@ -19,8 +19,8 @@ const About = () => {
   const stats = [
     { number: "10.5k", title: "Sellers active our site", icon: "store" },
     { number: "33k", title: "Monthly Product Sale", icon: "dollar" },
-    { number: "45.5k", title: "Customer active in our site", icon: "users" },
-    { number: "25k", title: "Anual gross sale in our site", icon: "money" }
+    { number: "95.5k", title: "Customer active in our site", icon: "users" },
+    { number: "25M", title: "Anual gross sale in our site", icon: "money" }
   ];
 
   const totalTeamPages = Math.ceil(teamMembers.length / 3);

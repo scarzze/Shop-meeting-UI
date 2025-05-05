@@ -4,11 +4,6 @@ import ProfileForm from '../components/ProfileForm';
 const Profile = () => {
   return (
     <div className="min-h-screen bg-white">
-      {/* Banner */}
-      <div className="bg-black text-white text-center text-sm py-2">
-        <span>Summer Sale for All Swim Suits And Free Express Delivery - OFF 50%! </span>
-        <a href="#" className="underline ml-2">ShopNow</a>
-      </div>
 
       {/* Main Container */}
       <div className="flex flex-col lg:flex-row p-6 lg:p-16 gap-6">

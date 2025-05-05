@@ -1,20 +1,43 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Footer from '../components/Footer';
+import axios from 'axios';
 
 const Register = () => {
+  const navigate = useNavigate();
+  const [notification, setNotification] = useState({ message: '', type: '' });
+
   const handleGoogleSignUp = () => {
     // TODO: Implement actual Google authentication
     console.log('Google sign-up clicked');
   };
 
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = {
+      name: formData.get('name'),
+      email: formData.get('email'),
+      password: formData.get('password'),
+    };
+
+    try {
+      const response = await axios.post('http://localhost:5001/register', data);
+      setNotification({ message: 'Registration successful', type: 'success' });
+      setTimeout(() => navigate('/'), 2000); // Redirect after 2 seconds
+    } catch (error) {
+      setNotification({ message: error.response?.data?.error || 'Registration failed', type: 'error' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white flex flex-col justify-between">
-      {/* Banner */}
-      <div className="bg-black text-white text-center text-sm py-2">
-        <span>Mid-year Sales for All Laptops And Free Express Delivery - OFF 50%! </span>
-        <a href="#" className="underline ml-2">ShopNow</a>
-      </div>
+
+      {notification.message && (
+        <div className={`notification ${notification.type} p-4 mb-4 text-center`}>
+          {notification.message}
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="flex flex-col lg:flex-row items-center justify-center p-6 lg:p-16">
@@ -67,19 +90,22 @@ const Register = () => {
             </div>
           </div>
 
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleRegister}>
             <input
               type="text"
+              name="name"
               placeholder="Full Name"
               className="w-full border-b border-gray-300 py-2 focus:outline-none"
             />
             <input
               type="email"
+              name="email"
               placeholder="Email"
               className="w-full border-b border-gray-300 py-2 focus:outline-none"
             />
             <input
               type="password"
+              name="password"
               placeholder="Password"
               className="w-full border-b border-gray-300 py-2 focus:outline-none"
             />

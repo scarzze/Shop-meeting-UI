@@ -1,23 +1,49 @@
 import React from 'react';
+import { ShoppingCart, Heart, User, Search } from 'lucide-react';
 
 const Navbar = () => {
   return (
     <header className="bg-white border-b">
-      <div className="max-w-6xl mx-auto flex items-center justify-between py-4 px-4">
-        <h1 className="text-2xl font-bold">ShopMeeting</h1>
-        <nav className="space-x-6 hidden md:block">
-          <a href="#" className="text-gray-700 hover:text-black">Home</a>
-          <a href="#" className="text-gray-700 hover:text-black">Contact</a>
-          <a href="#" className="text-gray-700 hover:text-black">About</a>
-          <a href="#" className="text-gray-700 hover:text-black">Sign Up</a>
+      {/* Top banner */}
+      <div className="bg-black text-white text-sm text-center py-2">
+        Mid-year Sales for All Laptops And Free Express Delivery - OFF 50%!&nbsp;
+        <a href="/" className="underline font-semibold hover:text-gray-300">ShopNow</a>
+      </div>
+
+      {/* Main navbar */}
+      <div className="max-w-7xl mx-auto flex items-center justify-between py-4 px-4">
+        <div className="text-2xl font-bold">ShopMeeting</div>
+
+        <nav className="hidden md:flex gap-6 text-gray-700 font-medium">
+          <a href="/" className="hover:text-black transition">Home</a>
+          <a href="/about" className="hover:text-black transition">About</a>
+          <a href="/wishlist" className="hover:text-black transition">Wishlist</a>
+          <a href="/register" className="hover:text-black transition">Sign Up</a>
         </nav>
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="What are you looking for?"
-            className="border rounded-full px-4 py-1 w-64 text-sm"
-          />
-          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">🔍</span>
+
+        <div className="flex items-center gap-6">
+          {/* Search input */}
+          <div className="relative hidden md:block">
+            <input
+              type="text"
+              placeholder="What are you looking for?"
+              className="border rounded-full px-4 py-1.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-black transition w-64"
+            />
+            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
+          </div>
+
+          {/* Icons */}
+          <div className="flex gap-4 items-center text-gray-700">
+            <a href="/wishlist">
+              <Heart className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
+            </a>
+            <a href="/cart">
+              <ShoppingCart className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
+            </a>
+            <a href="/profile">
+              <User className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
+            </a>
+          </div>
         </div>
       </div>
     </header>
