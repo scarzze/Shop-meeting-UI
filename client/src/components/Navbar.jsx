@@ -1,11 +1,17 @@
 import React from 'react';
+<<<<<<< HEAD:client/src/components/Navbar.jsx
 // import { ShoppingCart, Heart, User, Search } from 'lucide-react';
 import { FiShoppingCart, FiHeart, FiUser, FiSearch } from 'react-icons/fi';
 
+=======
+import { ShoppingCart, Heart, User, Search } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faHeadset } from '@fortawesome/free-solid-svg-icons';
+>>>>>>> c6781ceb3a7b39bd508b1b324a1a93759270e54d:src/components/Navbar.jsx
 
 const Navbar = () => {
   return (
-    <header className="bg-white border-b">
+    <header className="bg-white border-b sticky top-0 z-50">
       {/* Top banner */}
       <div className="bg-black text-white text-sm text-center py-2">
         Mid-year Sales for All Laptops And Free Express Delivery - OFF 50%!&nbsp;
@@ -44,6 +50,9 @@ const Navbar = () => {
             </a>
             <a href="/profile">
               <FiUser className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
+            </a>
+            <a href="/contact">
+              <FontAwesomeIcon icon={faHeadset} className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
             </a>
           </div>
         </div>
