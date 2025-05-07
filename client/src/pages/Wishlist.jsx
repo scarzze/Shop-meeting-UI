@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Trash2, Eye } from 'lucide-react';
+import { CartContext } from '../context/CartContext';
 
 const wishlistItems = [
   {
@@ -65,11 +66,18 @@ const recommendedItems = [
 ];
 
 const Wishlist = () => {
+  const { addToCart } = useContext(CartContext);
+
+  const handleMoveToCart = (item) => {
+    addToCart(item);
+    alert(`${item.name} has been moved to the cart.`);
+  };
+
   return (
     <div className="px-6 md:px-12 py-10 space-y-12">
       {/* Wishlist Header */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-semibold">Wishlist (4)</h2>
+        <h2 className="text-2xl font-semibold">Wishlist ({wishlistItems.length})</h2>
         <button className="px-4 py-2 border border-black hover:bg-black hover:text-white transition">
           Move All To Bag
         </button>
@@ -93,8 +101,11 @@ const Wishlist = () => {
             {item.oldPrice && (
               <div className="text-gray-500 line-through text-sm">KES{item.oldPrice}</div>
             )}
-            <button className="w-full mt-3 bg-black text-white py-2 hover:bg-red-600 transition">
-              Add To Cart
+            <button 
+              className="w-full mt-3 bg-black text-white py-2 hover:bg-red-600 transition"
+              onClick={() => handleMoveToCart(item)}
+            >
+              Move To Cart
             </button>
           </div>
         ))}

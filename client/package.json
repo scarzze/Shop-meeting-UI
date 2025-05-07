@@ -10,8 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@cloudinary/url-gen": "^1.21.0",
     "@tailwindcss/vite": "^4.1.4",
     "axios": "^1.9.0",
+    "cloudinary": "^2.6.1",
     "framer-motion": "^12.9.4",
     "lucide-react": "^0.488.0",
     "react": "^19.0.0",

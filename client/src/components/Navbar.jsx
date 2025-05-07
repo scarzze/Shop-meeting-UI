@@ -1,5 +1,7 @@
 import React from 'react';
-import { ShoppingCart, Heart, User, Search } from 'lucide-react';
+// import { ShoppingCart, Heart, User, Search } from 'lucide-react';
+import { FiShoppingCart, FiHeart, FiUser, FiSearch } from 'react-icons/fi';
+
 
 const Navbar = () => {
   return (
@@ -29,19 +31,19 @@ const Navbar = () => {
               placeholder="What are you looking for?"
               className="border rounded-full px-4 py-1.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-black transition w-64"
             />
-            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
+            <FiSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
           </div>
 
           {/* Icons */}
           <div className="flex gap-4 items-center text-gray-700">
             <a href="/wishlist">
-              <Heart className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
+              <FiHeart className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
             </a>
             <a href="/cart">
-              <ShoppingCart className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
+              <FiShoppingCart className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
             </a>
             <a href="/profile">
-              <User className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
+              <FiUser className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
             </a>
           </div>
         </div>

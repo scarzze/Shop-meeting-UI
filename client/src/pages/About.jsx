@@ -134,10 +134,10 @@ const About = () => {
         <div className="md:w-1/2">
           <h1 className="text-4xl font-bold mb-6">Our Story</h1>
           <p className="mb-4">
-            Launched in 2024, ShopMeeting is Kenya's premier online shopping marketplace with an active presence nationwide. Supported by wide range of tailored marketing, data and service solutions, ShopMeeting has 10,500 sellers and 300 brands and serves 3 millions customers across the country.
+          Founded in 2024, ShopMeeting has quickly become Kenya’s leading online shopping marketplace, with a strong nationwide presence. Backed by a wide range of tailored marketing, data and service solutions, ShopMeeting connects over 10,500 sellers and 300 brands with more than 3 million customers across the country.
           </p>
           <p>
-            ShopMeeting has more than 1 Million products to offer, growing at a very fast. ShopMeeting offers a diverse assortment in categories ranging from consumer.
+          With a fast-growing catalog of over 1 million products, ShopMeeting offers a diverse assortment across categories — from everyday consumer goods to specialty items — all aimed at delivering convenience, variety and value to our users.
           </p>
         </div>
         <div className="md:w-1/2">

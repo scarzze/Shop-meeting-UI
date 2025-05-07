@@ -2,7 +2,7 @@ import React from 'react';
 
 const OrderSummary = ({ products }) => {
   const subtotal = products?.reduce((sum, product) => sum + product.price, 0) || 0;
-  const shipping = 0; // Free shipping as shown in the design
+  const shipping = 0; // Free shipping 
 
   return (
     <div className="bg-gray-50 p-6 rounded-lg">
@@ -13,14 +13,14 @@ const OrderSummary = ({ products }) => {
             <h4 className="font-medium">{product.name}</h4>
             <p className="text-gray-500 text-sm">Quantity: {product.quantity}</p>
           </div>
-          <span className="font-medium">${product.price}</span>
+          <span className="font-medium">KES{product.price}</span>
         </div>
       ))}
       
       <div className="border-t mt-6 pt-4 space-y-2">
         <div className="flex justify-between">
           <span className="text-gray-600">Subtotal:</span>
-          <span className="font-medium">${subtotal}</span>
+          <span className="font-medium">KES{subtotal}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600">Shipping:</span>
@@ -28,7 +28,7 @@ const OrderSummary = ({ products }) => {
         </div>
         <div className="flex justify-between font-medium text-lg pt-2 border-t">
           <span>Total:</span>
-          <span>${subtotal}</span>
+          <span>KES{subtotal}</span>
         </div>
       </div>
     </div>

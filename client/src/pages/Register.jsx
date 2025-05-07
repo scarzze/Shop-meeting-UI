@@ -16,25 +16,32 @@ const Register = () => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = {
-      name: formData.get('name'),
+      username: formData.get('username'), // Updated to include username
       email: formData.get('email'),
       password: formData.get('password'),
     };
 
     try {
-      const response = await axios.post('http://localhost:5001/register', data);
+      const response = await axios.post('http://localhost:5000/register', data);
       setNotification({ message: 'Registration successful', type: 'success' });
-      setTimeout(() => navigate('/'), 2000); // Redirect after 2 seconds
+      setTimeout(() => navigate('/login'), 1000); // Redirect to login page after 1 second
     } catch (error) {
-      setNotification({ message: error.response?.data?.error || 'Registration failed', type: 'error' });
+      if (error.response?.status === 409) { // Conflict status code for existing user
+        setNotification({ message: 'User already exists. Please log in.', type: 'error' });
+      } else {
+        setNotification({ message: error.response?.data?.error || 'Registration failed', type: 'error' });
+      }
     }
   };
 
   return (
     <div className="min-h-screen bg-white flex flex-col justify-between">
-
       {notification.message && (
-        <div className={`notification ${notification.type} p-4 mb-4 text-center`}>
+        <div
+          className={`notification ${notification.type} p-4 mb-4 text-center rounded-md shadow-md ${
+            notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}
+        >
           {notification.message}
         </div>
       )}
@@ -93,8 +100,8 @@ const Register = () => {
           <form className="space-y-4" onSubmit={handleRegister}>
             <input
               type="text"
-              name="name"
-              placeholder="Full Name"
+              name="username"
+              placeholder="Username"
               className="w-full border-b border-gray-300 py-2 focus:outline-none"
             />
             <input

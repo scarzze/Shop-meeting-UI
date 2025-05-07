@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import ProfileForm from '../components/ProfileForm';
 
 const Profile = () => {
+  useEffect(() => {
+    document.title = 'Profile - Shop Meeting';
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
 

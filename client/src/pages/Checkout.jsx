@@ -1,24 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import OrderSummary from '../components/OrderSummary';
+import { CartContext } from '../context/CartContext';
 
 const Checkout = () => {
-  // Mock data - this will be replaced with database data later
-  const [cartItems] = useState([
-    {
-      id: 1,
-      name: 'LCD Monitor',
-      price: 650,
-      quantity: 1,
-      image: 'https://via.placeholder.com/60'
-    },
-    {
-      id: 2,
-      name: 'H1 Gamepad',
-      price: 1100,
-      quantity: 1,
-      image: 'https://via.placeholder.com/60'
-    }
-  ]);
+  const { cartItems } = useContext(CartContext);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -51,6 +36,10 @@ const Checkout = () => {
     alert('Order placed successfully!');
   };
 
+  const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+  const shipping = 0; // Free shipping
+  const total = subtotal + shipping;
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-2 gap-12">
       {/* Billing Details */}
@@ -69,7 +58,7 @@ const Checkout = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Company Name</label>
+            <label className="block text-sm font-medium mb-1">Last Name</label>
             <input
               type="text"
               name="companyName"
