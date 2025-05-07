@@ -1,9 +1,11 @@
 import React from 'react';
 import { ShoppingCart, Heart, User, Search } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faHeadset } from '@fortawesome/free-solid-svg-icons';
 
 const Navbar = () => {
   return (
-    <header className="bg-white border-b">
+    <header className="bg-white border-b sticky top-0 z-50">
       {/* Top banner */}
       <div className="bg-black text-white text-sm text-center py-2">
         Mid-year Sales for All Laptops And Free Express Delivery - OFF 50%!&nbsp;
@@ -42,6 +44,9 @@ const Navbar = () => {
             </a>
             <a href="/profile">
               <User className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
+            </a>
+            <a href="/contact">
+              <FontAwesomeIcon icon={faHeadset} className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
             </a>
           </div>
         </div>
