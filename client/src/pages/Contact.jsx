@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPhoneAlt, faEnvelope } from '@fortawesome/free-solid-svg-icons';
 
-const socket = io('http://localhost:5004', {
+const socket = io('http://localhost:5000', {
   transports: ['websocket'],
   upgrade: false
 });

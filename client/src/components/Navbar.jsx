@@ -1,13 +1,7 @@
 import React from 'react';
-<<<<<<< HEAD:client/src/components/Navbar.jsx
-// import { ShoppingCart, Heart, User, Search } from 'lucide-react';
 import { FiShoppingCart, FiHeart, FiUser, FiSearch } from 'react-icons/fi';
-
-=======
-import { ShoppingCart, Heart, User, Search } from 'lucide-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeadset } from '@fortawesome/free-solid-svg-icons';
->>>>>>> c6781ceb3a7b39bd508b1b324a1a93759270e54d:src/components/Navbar.jsx
 
 const Navbar = () => {
   return (
