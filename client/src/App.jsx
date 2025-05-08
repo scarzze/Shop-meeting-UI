@@ -15,6 +15,7 @@ import NotFound from './pages/NotFound';
 import Wishlist from './pages/Wishlist';
 import Contact from './pages/Contact';
 import FloatingContactButton from './components/contact';
+import FaqPage from './pages/FaqPage';
 
 
 const App = () => {
@@ -32,6 +33,7 @@ const App = () => {
         <Route path="/about" element={<About />} />
         <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/faq" element={<FaqPage />} />
         {/* <Route path="/search" element={<SearchResults />} /> */}
         <Route path="*" element={<NotFound />} />
       </Routes>

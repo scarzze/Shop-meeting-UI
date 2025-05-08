@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPhoneAlt, faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import { Link } from 'react-router-dom';
 
 const socket = io('http://localhost:5000', {
   transports: ['websocket', 'polling'],
@@ -16,7 +17,7 @@ const Contact = () => {
   const [status, setStatus] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
-  const currentUser = { id: 'user123' }; // Replace with actual user ID
+  const currentUser = { id: 'Timothy' }; // Replace with actual user ID
   const ticketId = 'ticket456'; // Replace with actual ticket ID
 
   useEffect(() => {
@@ -169,6 +170,16 @@ const Contact = () => {
             Send
           </button>
         </div>
+      </div>
+
+      {/* Link to FAQ Page */}
+      <div className="mt-6 text-center">
+        <Link
+          to="/faq"
+          className="text-sm text-black font-semibold hover:underline hover:text-gray-700"
+        >
+          Still need help? Check our FAQs →
+        </Link>
       </div>
     </div>
   );
