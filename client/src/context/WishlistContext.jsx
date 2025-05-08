@@ -1,4 +1,5 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
+import { AuthContext } from './AuthContext';
 
 export const WishlistContext = createContext();
 
@@ -6,30 +7,30 @@ const WishlistProvider = ({ children }) => {
   const [wishlistItems, setWishlistItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  // Check if user is authenticated
-  const isAuthenticated = () => {
-    return localStorage.getItem('token') !== null;
-  };
+  const { isAuthenticated, user } = useContext(AuthContext);
 
   // Fetch wishlist items
   const fetchWishlistItems = useCallback(async () => {
-    if (!isAuthenticated()) {
+    if (!isAuthenticated) {
+      console.log('User not authenticated, returning empty wishlist');
       return [];
     }
     
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:5000/wishlist', {
         method: 'GET',
+        credentials: 'include', // Important for cookies to be sent
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          console.log('Authentication failed - session may be invalid or expired');
+          return [];
+        }
         throw new Error('Failed to fetch wishlist items');
       }
 
@@ -43,22 +44,21 @@ const WishlistProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   // Add to wishlist
   const addToWishlist = async (productId) => {
-    if (!isAuthenticated()) {
+    if (!isAuthenticated) {
       alert('Please login to add items to your wishlist');
       return;
     }
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:5000/wishlist', {
         method: 'POST',
+        credentials: 'include', // Important for cookies to be sent
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ product_id: productId })
@@ -81,17 +81,16 @@ const WishlistProvider = ({ children }) => {
 
   // Remove from wishlist
   const removeFromWishlist = async (productId) => {
-    if (!isAuthenticated()) {
+    if (!isAuthenticated) {
       return;
     }
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`http://localhost:5000/wishlist/${productId}`, {
         method: 'DELETE',
+        credentials: 'include', // Important for cookies to be sent
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -119,18 +118,17 @@ const WishlistProvider = ({ children }) => {
 
   // Move item from wishlist to cart
   const moveToCart = async (productId) => {
-    if (!isAuthenticated()) {
+    if (!isAuthenticated) {
       return;
     }
 
     setLoading(true);
     try {
       // First add to cart
-      const token = localStorage.getItem('token');
       const addToCartResponse = await fetch('http://localhost:5000/cart', {
         method: 'POST',
+        credentials: 'include', // Important for cookies to be sent
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ product_id: productId, quantity: 1 })
@@ -154,20 +152,18 @@ const WishlistProvider = ({ children }) => {
 
   // Move all items to cart
   const moveAllToCart = async () => {
-    if (!isAuthenticated() || wishlistItems.length === 0) {
+    if (!isAuthenticated || wishlistItems.length === 0) {
       return;
     }
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      
       // Add all items to cart one by one
       for (const item of wishlistItems) {
         await fetch('http://localhost:5000/cart', {
           method: 'POST',
+          credentials: 'include', // Important for cookies to be sent
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ product_id: item.product_id, quantity: 1 })
@@ -191,14 +187,29 @@ const WishlistProvider = ({ children }) => {
     let isMounted = true;
 
     const initializeWishlist = async () => {
-      if (isMounted && isAuthenticated()) {
-        await fetchWishlistItems();
+      if (isMounted) {
+        if (isAuthenticated()) {
+          await fetchWishlistItems();
+        } else {
+          // Clear wishlist if not authenticated
+          setWishlistItems([]);
+        }
       }
     };
 
     initializeWishlist();
 
+    // Listen for storage events (like token changes)
+    const handleStorageChange = (e) => {
+      if (e.key === 'token' && isMounted) {
+        initializeWishlist();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
     return () => {
+      window.removeEventListener('storage', handleStorageChange);
       isMounted = false;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps

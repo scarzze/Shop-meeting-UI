@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { CartContext } from '../context/CartContext';
@@ -12,9 +12,11 @@ const Cart = () => {
     loading, 
     error,
     updateCartItemQuantity, 
-    removeCartItem 
+    removeFromCart,
+    fetchCartItems 
   } = useContext(CartContext);
   
+  const [notification, setNotification] = useState({ message: '', type: '' });
   const navigate = useNavigate();
 
   // Check if user is authenticated
@@ -52,9 +54,35 @@ const Cart = () => {
       </div>
     );
   }
+  
+  // Handle cart item removal with error handling
+  const handleRemoveItem = async (itemId) => {
+    try {
+      await removeFromCart(itemId);
+      // Refresh cart items after successful removal
+      await fetchCartItems();
+      setNotification({ message: 'Item removed successfully', type: 'success' });
+      setTimeout(() => setNotification({ message: '', type: '' }), 3000);
+    } catch (error) {
+      console.error('Error removing item:', error);
+      if (error.message.includes('Authentication required')) {
+        setNotification({ message: 'Please log in to manage your cart', type: 'error' });
+        setTimeout(() => navigate('/login', { state: { from: '/cart' } }), 2000);
+      } else {
+        setNotification({ message: error.message || 'Failed to remove item', type: 'error' });
+        setTimeout(() => setNotification({ message: '', type: '' }), 3000);
+      }
+    }
+  }
 
   return (
-    <div className="p-4 md:p-10">
+    <div className="p-4 md:p-10 relative">  
+      {/* Notification */}
+      {notification.message && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded shadow-lg ${notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {notification.message}
+        </div>
+      )}
       {/* Breadcrumb */}
       <div className="text-sm text-gray-500 mb-6">
         <Link to="/" className="hover:text-black">Home</Link> / <span className="text-black font-medium">Cart</span>
@@ -90,7 +118,7 @@ const Cart = () => {
                 key={item.item_id} 
                 item={item}
                 onQuantityChange={updateCartItemQuantity}
-                onRemove={removeCartItem}
+                onRemove={handleRemoveItem}
               />
             ))}
           </div>

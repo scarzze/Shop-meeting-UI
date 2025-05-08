@@ -39,7 +39,74 @@ const recommendedItems = [
   },
 ];
 
+// Reusable Product Card component
+const ProductCard = ({ item, isWishlistItem = false, onAction, actionText, actionIcon }) => {
+  const { addToCart } = useContext(CartContext);
+  
+  // Handle image error
+  const handleImageError = (e) => {
+    e.target.src = '/images/placeholder.png';
+    e.target.onerror = null;
+  };
 
+  return (
+    <div key={item.id || item.product_id} className="relative border p-4 group">
+      {/* Badge displays (discount or new) */}
+      {item.discount && (
+        <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+          {item.discount}
+        </div>
+      )}
+      {item.isNew && (
+        <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
+          NEW
+        </div>
+      )}
+      
+      {/* Action button (trash for wishlist items, eye for recommended) */}
+      <button 
+        onClick={() => isWishlistItem && onAction(item)}
+        className={`absolute top-2 right-2 text-gray-500 ${isWishlistItem ? 'hover:text-red-500' : 'hover:text-black'} transition`}
+      >
+        {actionIcon}
+      </button>
+      
+      {/* Product image */}
+      <Link to={`/product/${item.product_id || item.id}`}>
+        <img 
+          src={item.image_url || item.image} 
+          alt={item.name} 
+          className="mx-auto h-36 object-contain" 
+          onError={handleImageError}
+        />
+      </Link>
+      
+      {/* Product details */}
+      <h3 className="mt-4 font-medium">{item.name}</h3>
+      <div className="text-red-600 font-semibold">KES{item.price}</div>
+      
+      {/* Optional old price */}
+      {item.oldPrice && (
+        <div className="text-gray-500 line-through text-sm">KES{item.oldPrice}</div>
+      )}
+      
+      {/* Optional rating */}
+      {item.rating && (
+        <div className="flex items-center gap-1 text-yellow-500 mt-1">
+          {'★'.repeat(item.rating)} <span className="text-gray-600 text-sm">({item.rating})</span>
+        </div>
+      )}
+      
+      {/* Action button */}
+      <button 
+        onClick={() => isWishlistItem ? onAction(item) : addToCart(item.id)}
+        className="w-full mt-3 bg-black text-white py-2 hover:bg-red-600 transition"
+      >
+        {actionText}
+      </button>
+    </div>
+  );
+};
 
 const Wishlist = () => {
   const { addToCart } = useContext(CartContext);
@@ -78,6 +145,16 @@ const Wishlist = () => {
     }
   };
 
+  // Render empty wishlist message
+  const renderEmptyWishlist = () => (
+    <div className="col-span-full text-center py-8">
+      <p className="mb-4">Your wishlist is empty.</p>
+      <Link to="/" className="px-4 py-2 bg-black text-white hover:bg-red-600 transition">
+        Continue Shopping
+      </Link>
+    </div>
+  );
+
   return (
     <div className="px-6 md:px-12 py-10 space-y-12">
       {/* Wishlist Header */}
@@ -100,41 +177,20 @@ const Wishlist = () => {
         ) : error ? (
           <div className="col-span-full text-center py-8 text-red-500">{error}</div>
         ) : wishlistItems.length === 0 ? (
-          <div className="col-span-full text-center py-8">
-            <p className="mb-4">Your wishlist is empty.</p>
-            <Link to="/" className="px-4 py-2 bg-black text-white hover:bg-red-600 transition">
-              Continue Shopping
-            </Link>
-          </div>
+          renderEmptyWishlist()
         ) : (
           wishlistItems.map(item => (
-            <div key={item.product_id} className="relative border p-4">
-              <button 
-                onClick={() => handleRemoveFromWishlist(item)}
-                className="absolute top-2 right-2 text-gray-500 hover:text-red-500 transition"
-              >
-                <Trash2 size={16} />
-              </button>
-              <Link to={`/product/${item.product_id}`}>
-                <img 
-                  src={item.image_url} 
-                  alt={item.name} 
-                  className="mx-auto h-36 object-contain" 
-                  onError={(e) => {
-                    e.target.src = '/images/placeholder.png';
-                    e.target.onerror = null;
-                  }}
-                />
-              </Link>
-              <h3 className="mt-4 font-medium">{item.name}</h3>
-              <div className="text-red-600 font-semibold">KES{item.price}</div>
-              <button 
-                className="w-full mt-3 bg-black text-white py-2 hover:bg-red-600 transition"
-                onClick={() => handleMoveToCart(item)}
-              >
-                Move To Cart
-              </button>
-            </div>
+            <ProductCard 
+              key={item.product_id}
+              item={item} 
+              isWishlistItem={true}
+              onAction={handleMoveToCart}
+              actionText="Move To Cart"
+              actionIcon={<Trash2 size={16} onClick={(e) => {
+                e.stopPropagation();
+                handleRemoveFromWishlist(item);
+              }} />}
+            />
           ))
         )}
       </div>
@@ -149,41 +205,17 @@ const Wishlist = () => {
             </Link>
           </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {recommendedItems.map(item => (
-            <div key={item.id} className="relative border p-4 group">
-              {item.discount && (
-                <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
-                  {item.discount}
-                </div>
-              )}
-              {item.isNew && (
-                <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
-                  NEW
-                </div>
-              )}
-              <button className="absolute top-2 right-2 text-gray-500 hover:text-black transition">
-                <Eye size={16} />
-              </button>
-              <img src={item.image} alt={item.name} className="mx-auto h-36 object-contain" />
-              <h3 className="mt-4 font-medium">{item.name}</h3>
-              <div className="text-red-600 font-semibold">KES{item.price}</div>
-              {item.oldPrice && (
-                <div className="text-gray-500 line-through text-sm">KES{item.oldPrice}</div>
-              )}
-              <div className="flex items-center gap-1 text-yellow-500 mt-1">
-                {'★'.repeat(item.rating)} <span className="text-gray-600 text-sm">({item.rating})</span>
-              </div>
-              <button 
-                onClick={() => addToCart(item.id)}
-                className="w-full mt-3 bg-black text-white py-2 hover:bg-red-600 transition"
-              >
-                Add To Cart
-              </button>
-            </div>
-          ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {recommendedItems.map(item => (
+              <ProductCard 
+                key={item.id}
+                item={item} 
+                actionText="Add To Cart"
+                actionIcon={<Eye size={16} />}
+              />
+            ))}
+          </div>
         </div>
-      </div>
       )}
     </div>
   );

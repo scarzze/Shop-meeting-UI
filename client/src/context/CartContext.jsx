@@ -1,4 +1,5 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
+import { AuthContext } from './AuthContext';
 
 export const CartContext = createContext();
 
@@ -7,11 +8,7 @@ const CartProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [cartTotal, setCartTotal] = useState(0);
-
-  // Check if user is authenticated
-  const isAuthenticated = () => {
-    return localStorage.getItem('token') !== null;
-  };
+  const { isAuthenticated, user } = useContext(AuthContext);
 
   // Calculate cart total
   const calculateTotal = useCallback((items) => {
@@ -25,18 +22,25 @@ const CartProvider = ({ children }) => {
 
   // Fetch cart items
   const fetchCartItems = async () => {
-    try {
-      const token = localStorage.getItem('token');
+    if (!isAuthenticated) {
+      console.log('User not authenticated, returning empty cart');
+      return [];
+    }
+    
+    try {      
       const response = await fetch('http://localhost:5000/cart', {
         method: 'GET',
-        credentials: 'include',
+        credentials: 'include', // Important for cookies to be sent
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          console.log('Authentication failed - session may be invalid or expired');
+          return [];
+        }
         throw new Error('Failed to fetch cart items');
       }
 
@@ -44,19 +48,17 @@ const CartProvider = ({ children }) => {
       return data;
     } catch (error) {
       console.error('Error fetching cart items:', error);
-      throw error;
+      return [];
     }
   };
 
   // Update cart item quantity with optimistic update
   const updateCartItemQuantity = async (itemId, quantity) => {
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`http://localhost:5000/cart/${itemId}`, {
-        method: 'PUT',
-        credentials: 'include',
+        method: 'POST',
+        credentials: 'include', // Important for cookies to be sent
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ quantity })
@@ -77,12 +79,10 @@ const CartProvider = ({ children }) => {
   // Add to cart with optimistic update
   const addToCart = async (productId, quantity = 1) => {
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:5000/cart', {
         method: 'POST',
-        credentials: 'include',
+        credentials: 'include', // Important for cookies to be sent
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ product_id: productId, quantity })
@@ -103,17 +103,24 @@ const CartProvider = ({ children }) => {
   // Remove cart item with optimistic update
   const removeFromCart = async (itemId) => {
     try {
-      const token = localStorage.getItem('token');
+      if (!isAuthenticated) {
+        console.error('User not authenticated');
+        throw new Error('Authentication required');
+      }
+      
       const response = await fetch(`http://localhost:5000/cart/${itemId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        credentials: 'include', // Important for cookies to be sent
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          console.error('Authentication failed - session may be invalid or expired');
+          throw new Error('Authentication required. Please log in again.');
+        }
         throw new Error('Failed to remove item from cart');
       }
 
@@ -137,9 +144,15 @@ const CartProvider = ({ children }) => {
     const initializeCart = async () => {
       if (isMounted) {
         try {
-          const data = await fetchCartItems();
-          setCartItems(data);
-          calculateTotal(data);
+          if (isAuthenticated) {
+            const data = await fetchCartItems();
+            setCartItems(data);
+            calculateTotal(data);
+          } else {
+            // Clear cart if not authenticated
+            setCartItems([]);
+            setCartTotal(0);
+          }
         } catch (error) {
           setError(error.message);
         }
@@ -147,11 +160,12 @@ const CartProvider = ({ children }) => {
     };
 
     initializeCart();
-
+    
     return () => {
       isMounted = false;
     };
-  }, [fetchCartItems, calculateTotal]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, calculateTotal]);
 
   return (
     <CartContext.Provider

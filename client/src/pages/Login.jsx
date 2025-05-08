@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Footer from '../components/Footer';
-import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [notification, setNotification] = useState({ message: '', type: '' });
 
   const handleGoogleLogin = () => {
@@ -15,19 +15,20 @@ const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const data = {
-      username: formData.get('username'),
-      password: formData.get('password'),
-    };
+    const username = formData.get('username');
+    const password = formData.get('password');
 
     try {
-      const response = await axios.post('http://localhost:5000/login', data);
-      const { access_token } = response.data;
-      localStorage.setItem('token', access_token); // Store token in localStorage
-      setNotification({ message: 'Login successful', type: 'success' });
-      setTimeout(() => navigate('/'), 1000);
+      const result = await login(username, password);
+      
+      if (result.success) {
+        setNotification({ message: 'Login successful', type: 'success' });
+        setTimeout(() => navigate('/'), 1000);
+      } else {
+        setNotification({ message: result.error || 'Login failed', type: 'error' });
+      }
     } catch (error) {
-      setNotification({ message: error.response?.data?.error || 'Login failed', type: 'error' });
+      setNotification({ message: error.message || 'Login failed', type: 'error' });
     }
   };
 

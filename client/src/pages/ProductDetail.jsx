@@ -4,6 +4,8 @@ import ProductCard from '../components/ProductCard';
 import { FaHeart, FaRegHeart } from 'react-icons/fa';
 import { Cloudinary } from '@cloudinary/url-gen';
 import { fill } from '@cloudinary/url-gen/actions/resize';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const cld = new Cloudinary({
   cloud: {
@@ -26,6 +28,7 @@ const getCloudinaryImageUrl = (publicId, width, height) => {
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [product, setProduct] = useState(null);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [inCart, setInCart] = useState(false);
@@ -33,11 +36,6 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
-
-  // Check if user is authenticated
-  const isAuthenticated = () => {
-    return localStorage.getItem('token') !== null;
-  };
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -105,28 +103,19 @@ const ProductDetail = () => {
     }
     
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/cart', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          product_id: product.id,
-          quantity: selectedQuantity
-        })
+      const response = await axios.post('http://localhost:5000/cart', {
+        product_id: product.id,
+        quantity: selectedQuantity
+      }, {
+        withCredentials: true
       });
       
-      if (response.ok) {
+      if (response.status === 200) {
         setInCart(true);
         setTimeout(() => navigate('/cart'), 1000); // Redirect to cart after 1 second
-      } else {
-        const errorData = await response.json();
-        console.error('Error adding to cart:', errorData);
       }
     } catch (error) {
-      console.error('Error adding to cart:', error);
+      console.error('Error adding to cart:', error.response?.data || error.message);
     }
   };
 
@@ -137,25 +126,23 @@ const ProductDetail = () => {
     }
     
     try {
-      const token = localStorage.getItem('token');
       const endpoint = isWishlisted ? 
         `http://localhost:5000/wishlist/${product.id}` : 
         'http://localhost:5000/wishlist';
       
-      const response = await fetch(endpoint, {
-        method: isWishlisted ? 'DELETE' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: isWishlisted ? null : JSON.stringify({ product_id: product.id })
-      });
-      
-      if (response.ok) {
-        setIsWishlisted(!isWishlisted);
+      if (isWishlisted) {
+        const response = await axios.delete(endpoint, { withCredentials: true });
+        if (response.status === 200) {
+          setIsWishlisted(false);
+        }
+      } else {
+        const response = await axios.post(endpoint, { product_id: product.id }, { withCredentials: true });
+        if (response.status === 200) {
+          setIsWishlisted(true);
+        }
       }
     } catch (error) {
-      console.error('Error updating wishlist:', error);
+      console.error('Error updating wishlist:', error.response?.data || error.message);
     }
   };
 
