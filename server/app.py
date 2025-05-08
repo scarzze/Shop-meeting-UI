@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_migrate import Migrate
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import JWTManager, create_access_token, create_refresh_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import set_access_cookies, set_refresh_cookies, unset_jwt_cookies
 from flask_jwt_extended.exceptions import NoAuthorizationError
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -126,8 +127,42 @@ def login():
     if not user or not user.check_password(password):
         return jsonify({'error': 'Invalid credentials'}), 401
 
+    # Create access token and refresh token
     access_token = create_access_token(identity=user.id)
-    return jsonify({'access_token': access_token}), 200
+    refresh_token = create_refresh_token(identity=user.id)
+    
+    # Set JWT cookies
+    response = jsonify({
+        'message': 'Login successful',
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email
+        }
+    })
+    
+    # Set cookies
+    set_access_cookies(response, access_token)
+    set_refresh_cookies(response, refresh_token)
+    
+    return response, 200
+
+# User Logout
+@app.route('/logout', methods=['POST'])
+def logout():
+    response = jsonify({'message': 'Logout successful'})
+    unset_jwt_cookies(response)
+    return response, 200
+
+# Token Refresh
+@app.route('/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    user_id = get_jwt_identity()
+    access_token = create_access_token(identity=user_id)
+    response = jsonify({'message': 'Token refreshed'})
+    set_access_cookies(response, access_token)
+    return response, 200
 
 # Get current user profile
 @app.route('/profile', methods=['GET'])
@@ -266,7 +301,7 @@ def add_to_cart():
         return jsonify({'error': 'Failed to add item to cart'}), 500
 
 # Update Cart Item Quantity
-@app.route('/cart/<int:item_id>', methods=['PUT'])
+@app.route('/cart/<int:item_id>', methods=['POST'])
 @jwt_required()
 def update_cart_item(item_id):
     user_id = get_jwt_identity()
