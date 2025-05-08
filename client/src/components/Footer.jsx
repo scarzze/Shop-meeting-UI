@@ -23,19 +23,19 @@ const Footer = () => {
         <div>
           <h4 className="font-semibold mb-2">Support</h4>
           <p className="text-sm text-gray-300">Ngong Road, Nairobi - Kenya</p>
-          <p className="text-sm text-gray-300">shopmeeting@gmail.com</p>
-          <p className="text-sm text-gray-300">+254722100100</p>
+          <p className="text-sm text-gray-300">customer@ShopMeet.com</p>
+          <p className="text-sm text-gray-300">+254722222256</p>
         </div>
 
         {/* Account */}
         <div>
           <h4 className="font-semibold mb-2">Account</h4>
           <ul className="space-y-1 text-sm text-gray-300">
-            <li><a href="#">My Account</a></li>
-            <li><a href="#">Login / Register</a></li>
-            <li><a href="#">Cart</a></li>
-            <li><a href="#">Wishlist</a></li>
-            <li><a href="#">Shop</a></li>
+            <li><a href="/profile">My Account</a></li>
+            <li><a href="/login">Login / Register</a></li>
+            <li><a href="/cart">Cart</a></li>
+            <li><a href="/wishlist">Wishlist</a></li>
+            <li><a href="/">Shop</a></li>
           </ul>
         </div>
 

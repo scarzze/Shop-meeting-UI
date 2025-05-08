@@ -4,8 +4,11 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPhoneAlt, faEnvelope } from '@fortawesome/free-solid-svg-icons';
 
 const socket = io('http://localhost:5000', {
-  transports: ['websocket'],
-  upgrade: false
+  transports: ['websocket', 'polling'],
+  withCredentials: true,
+  auth: {
+    token: localStorage.getItem('token')
+  }
 });
 
 const Contact = () => {
@@ -40,7 +43,7 @@ const Contact = () => {
       socket.off('new_message');
       socket.off('contact_form_status');
     };
-  }, []);
+  }, [currentUser.id, ticketId]);
 
   const handleSubmit = (e) => {
     e.preventDefault();

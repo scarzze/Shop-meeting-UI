@@ -231,11 +231,11 @@ const Home = () => {
             <div className="flex gap-4 mb-8">
               <div className="bg-white rounded-full h-16 w-16 flex flex-col items-center justify-center text-black">
                 <span className="font-bold">23</span>
-                <span className="text-xs">Hours</span>
+                <span className="text-xs">Days</span>
               </div>
               <div className="bg-white rounded-full h-16 w-16 flex flex-col items-center justify-center text-black">
                 <span className="font-bold">05</span>
-                <span className="text-xs">Days</span>
+                <span className="text-xs">Hours</span>
               </div>
               <div className="bg-white rounded-full h-16 w-16 flex flex-col items-center justify-center text-black">
                 <span className="font-bold">59</span>

@@ -10,11 +10,11 @@ const Cart = () => {
     cartItems, 
     cartTotal, 
     loading, 
-    error, 
+    error,
     updateCartItemQuantity, 
-    removeCartItem,
-    fetchCartItems 
+    removeCartItem 
   } = useContext(CartContext);
+  
   const navigate = useNavigate();
 
   // Check if user is authenticated
@@ -22,15 +22,8 @@ const Cart = () => {
     return localStorage.getItem('token') !== null;
   };
 
-  useEffect(() => {
-    // Refresh cart items when component mounts
-    fetchCartItems();
-  }, [fetchCartItems]);
-
-  // Calculate subtotal
-  const subtotal = cartTotal || cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   const shipping = 0; // Free shipping
-  const total = subtotal + shipping;
+  const total = cartTotal + shipping;
 
   const handleCheckout = () => {
     if (!isAuthenticated()) {
@@ -53,12 +46,9 @@ const Cart = () => {
       <div className="p-4 md:p-10 text-center">
         <h2 className="text-xl font-bold text-red-500 mb-4">Error loading cart</h2>
         <p className="mb-4">{error}</p>
-        <button 
-          onClick={() => fetchCartItems()} 
-          className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800"
-        >
-          Try Again
-        </button>
+        <Link to="/" className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800">
+          Return to Home
+        </Link>
       </div>
     );
   }
@@ -85,8 +75,8 @@ const Cart = () => {
           
           {/* Cart Header */}
           <div className="hidden md:flex border-b pb-2 font-medium text-gray-600">
-            <div className="w-6"></div> {/* Remove button space */}
-            <div className="w-20"></div> {/* Image space */}
+            <div className="w-6"></div>
+            <div className="w-20"></div>
             <div className="flex-grow mx-4">Product</div>
             <div className="w-24 text-right">Price</div>
             <div className="w-32 mx-4 text-center">Quantity</div>
@@ -97,7 +87,7 @@ const Cart = () => {
           <div className="divide-y">
             {cartItems.map(item => (
               <CartItem 
-                key={item.item_id || item.id} 
+                key={item.item_id} 
                 item={item}
                 onQuantityChange={updateCartItemQuantity}
                 onRemove={removeCartItem}
@@ -121,7 +111,7 @@ const Cart = () => {
               <div className="border rounded p-4">
                 <div className="flex justify-between py-3 border-b">
                   <span>Subtotal:</span>
-                  <span className="font-medium">KES{subtotal.toFixed(2)}</span>
+                  <span className="font-medium">KES{cartTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between py-3 border-b">
                   <span>Shipping:</span>

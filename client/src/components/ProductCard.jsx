@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { FaHeart } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import { WishlistContext } from '../context/WishlistContext';
+import { CartContext } from '../context/CartContext';
 import { Cloudinary } from '@cloudinary/url-gen';
 import { fill } from '@cloudinary/url-gen/actions/resize';
 
@@ -24,16 +26,34 @@ const getCloudinaryImageUrl = (publicId, width, height) => {
 
 const ProductCard = ({ product, showPrice = true, showRatings = true }) => {
   const navigate = useNavigate();
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useContext(WishlistContext);
+  const { addToCart } = useContext(CartContext);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  
+  // Check if product is in wishlist when component mounts or product changes
+  useEffect(() => {
+    if (product && product.id) {
+      setIsWishlisted(isInWishlist(product.id));
+    }
+  }, [product, isInWishlist]);
 
   const handleProductClick = () => {
     navigate(`/product/${product.id}`);
   };
 
-  const handleWishlistClick = (e) => {
+  const handleWishlistClick = async (e) => {
     e.stopPropagation(); // Prevent triggering the card click
-    setIsWishlisted(!isWishlisted);
-    // Here you would typically call an API to add/remove from wishlist
+    
+    try {
+      if (isWishlisted) {
+        await removeFromWishlist(product.id);
+      } else {
+        await addToWishlist(product.id);
+      }
+      // State will be updated via the useEffect when isInWishlist changes
+    } catch (error) {
+      console.error('Error updating wishlist:', error);
+    }
   };
 
   // Use image_url if available, fallback to image
@@ -95,7 +115,13 @@ const ProductCard = ({ product, showPrice = true, showRatings = true }) => {
           </div>
         )}
         {/* Add to Cart */}
-        <button className="w-full bg-black text-white text-sm py-1 rounded hover:bg-red-600 transition">
+        <button 
+          className="w-full bg-black text-white text-sm py-1 rounded hover:bg-red-600 transition"
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent navigating to product page
+            addToCart(product.id);
+          }}
+        >
           {product.inCart ? 'In Cart' : 'Add To Cart'}
         </button>
       </div>

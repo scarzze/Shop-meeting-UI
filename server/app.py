@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-from sqlalchemy.exc import IntegrityError
+from flask_jwt_extended.exceptions import NoAuthorizationError
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit, join_room, leave_room
 
 from config import Config
 from models import db, bcrypt, User, Product, Cart, CartItem, Order, OrderItem, Payment, Review, Favorite, SupportTicket
@@ -18,19 +19,73 @@ jwt = JWTManager(app)
 # Configure CORS with specific settings
 CORS(app, resources={
     r"/*": {
-        "origins": "*",  # Replace with your frontend domain in production
+        "origins": ["http://127.0.0.1:5173", "http://localhost:5173"],  # Frontend development server
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True,
+        "expose_headers": ["Authorization"]
     }
 })
 
-# Add CORS response headers for all responses
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')  # Replace with your frontend domain in production
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    return response
+# Initialize Socket.IO
+socketio = SocketIO(app, cors_allowed_origins=["http://127.0.0.1:5173", "http://localhost:5173"])
+
+# Socket.IO event handlers
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Client disconnected')
+
+@socketio.on('join_chat')
+def handle_join_chat(data):
+    user_id = data.get('user_id')
+    ticket_id = data.get('ticket_id')
+    if user_id and ticket_id:
+        join_room(ticket_id)
+        emit('new_message', {'user_id': 'system', 'message': f'User {user_id} joined the chat'}, room=ticket_id)
+
+@socketio.on('leave_chat')
+def handle_leave_chat(data):
+    ticket_id = data.get('ticket_id')
+    if ticket_id:
+        leave_room(ticket_id)
+
+@socketio.on('chat_message')
+def handle_chat_message(data):
+    user_id = data.get('user_id')
+    ticket_id = data.get('ticket_id')
+    message = data.get('message')
+    if user_id and ticket_id and message:
+        emit('new_message', {'user_id': user_id, 'message': message}, room=ticket_id)
+
+@socketio.on('contact_form')
+def handle_contact_form(data):
+    try:
+        # Create a new support ticket from contact form
+        ticket = SupportTicket(
+            user_id=data.get('user_id', 'anonymous'),
+            subject=data.get('subject', 'Contact Form'),
+            message=data.get('message', '')
+        )
+        db.session.add(ticket)
+        db.session.commit()
+        emit('contact_form_status', {'success': True})
+    except Exception as e:
+        emit('contact_form_status', {'success': False, 'error': str(e)})
+
+# Error handling
+@app.errorhandler(NoAuthorizationError)
+def handle_no_auth_error(e):
+    return jsonify({'error': 'Authorization token is missing or invalid'}), 401
+
+@app.before_request
+def log_request_info():
+    if request.endpoint == 'add_to_cart':
+        print('Headers:', request.headers)
+        print('Authorization Header:', request.headers.get('Authorization'))
 
 @app.route('/')
 def index():
@@ -155,8 +210,10 @@ def get_cart():
         'item_id': item.id,
         'product_id': item.product_id,
         'name': item.product.name,
-        'price': item.product.price,
-        'quantity': item.quantity
+        'price': float(item.product.price),  # Ensure price is a float
+        'quantity': item.quantity,
+        'image_url': item.product.image_url,
+        'stock': item.product.stock
     } for item in cart.items])
 
 # Add or Update Cart Item
@@ -166,7 +223,7 @@ def add_to_cart():
     user_id = get_jwt_identity()
     data = request.json
     product_id = data.get('product_id')
-    quantity = data.get('quantity', 1)
+    quantity = int(data.get('quantity', 1))  # Ensure quantity is an integer
 
     if not product_id or quantity < 1:
         return jsonify({'error': 'Invalid product or quantity'}), 400
@@ -175,34 +232,76 @@ def add_to_cart():
     if not product:
         return jsonify({'error': 'Product not found'}), 404
 
+    if quantity > product.stock:
+        return jsonify({'error': f'Only {product.stock} items available'}), 400
+
     cart = get_or_create_cart(user_id)
     item = CartItem.query.filter_by(cart_id=cart.id, product_id=product_id).first()
 
     if item:
-        item.quantity += quantity
+        new_quantity = item.quantity + quantity
+        if new_quantity > product.stock:
+            return jsonify({'error': f'Cannot add {quantity} more items. Only {product.stock - item.quantity} available'}), 400
+        item.quantity = new_quantity
     else:
         item = CartItem(cart_id=cart.id, product_id=product_id, quantity=quantity)
         db.session.add(item)
 
-    db.session.commit()
-    return jsonify({'message': 'Item added to cart'}), 200
+    try:
+        db.session.commit()
+        return jsonify({
+            'message': 'Item added to cart',
+            'item': {
+                'item_id': item.id,
+                'product_id': item.product_id,
+                'name': product.name,
+                'price': float(product.price),
+                'quantity': item.quantity,
+                'image_url': product.image_url,
+                'stock': product.stock
+            }
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to add item to cart'}), 500
 
-# Update Quantity
+# Update Cart Item Quantity
 @app.route('/cart/<int:item_id>', methods=['PUT'])
 @jwt_required()
 def update_cart_item(item_id):
     user_id = get_jwt_identity()
     data = request.json
-    quantity = data.get('quantity', 1)
+    quantity = int(data.get('quantity', 1))
 
     if quantity < 1:
         return jsonify({'error': 'Invalid quantity'}), 400
 
     cart = get_or_create_cart(user_id)
     item = CartItem.query.filter_by(id=item_id, cart_id=cart.id).first_or_404()
+    
+    # Check product stock
+    if quantity > item.product.stock:
+        return jsonify({'error': f'Only {item.product.stock} items available'}), 400
+
     item.quantity = quantity
-    db.session.commit()
-    return jsonify({'message': 'Quantity updated'}), 200
+    
+    try:
+        db.session.commit()
+        return jsonify({
+            'message': 'Quantity updated',
+            'item': {
+                'item_id': item.id,
+                'product_id': item.product_id,
+                'name': item.product.name,
+                'price': float(item.product.price),
+                'quantity': item.quantity,
+                'image_url': item.product.image_url,
+                'stock': item.product.stock
+            }
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to update quantity'}), 500
 
 # Remove Item from Cart
 @app.route('/cart/<int:item_id>', methods=['DELETE'])
@@ -211,9 +310,14 @@ def delete_cart_item(item_id):
     user_id = get_jwt_identity()
     cart = get_or_create_cart(user_id)
     item = CartItem.query.filter_by(id=item_id, cart_id=cart.id).first_or_404()
-    db.session.delete(item)
-    db.session.commit()
-    return jsonify({'message': 'Item removed'}), 200
+    
+    try:
+        db.session.delete(item)
+        db.session.commit()
+        return jsonify({'message': 'Item removed'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to remove item'}), 500
 
 # Get wishlist
 @app.route('/wishlist', methods=['GET'])
@@ -410,4 +514,4 @@ def get_tickets():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, debug=True)
