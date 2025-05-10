@@ -4,27 +4,34 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPhoneAlt, faEnvelope } from '@fortawesome/free-solid-svg-icons';
 import { Link } from 'react-router-dom';
 
-const socket = io('http://localhost:5000', {
-  transports: ['websocket', 'polling'],
-  withCredentials: true,
-  auth: {
-    token: localStorage.getItem('token')
-  }
-});
+const socketRef = useRef(null);
+
+useEffect(() => {
+  socketRef.current = io('http://localhost:5004', {
+    transports: ['websocket', 'polling'],
+    withCredentials: true,
+    auth: {
+      token: localStorage.getItem('token'),
+    }
+  });
+
+  const socket = socketRef.current;
+}, []);
+
 
 const Contact = () => {
-  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '', phone: '' });
   const [status, setStatus] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
-  const currentUser = { id: 'Timothy' }; // Replace with actual user ID
-  const ticketId = 'ticket456'; // Replace with actual ticket ID
+  const currentUser = JSON.parse(localStorage.getItem('user'));  
+  const ticketId = `ticket_${currentUser.id}`; 
 
   useEffect(() => {
     socket.on('contact_form_status', (res) => {
       if (res.success) {
         setStatus('Message sent successfully!');
-        setForm({ name: '', email: '', subject: '', message: '' });
+        setForm({ name: '', email: '', subject: '', message: '', phone: '' });
       } else {
         setStatus(`Failed to send: ${res.error}`);
       }
