@@ -14,6 +14,7 @@ import About from './pages/About';
 import NotFound from './pages/NotFound';
 import Wishlist from './pages/Wishlist';
 import Contact from './pages/Contact';
+import Products from './pages/Products';
 import FloatingContactButton from './components/contact';
 
 
@@ -28,6 +29,7 @@ const App = () => {
         <Route path="/register" element={<Register />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/product/:id" element={<ProductDetail />} />
+        <Route path="/products" element={<Products />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/about" element={<About />} />
         <Route path="/wishlist" element={<Wishlist />} />

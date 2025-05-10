@@ -18,18 +18,20 @@ Migrate(app, db)
 jwt = JWTManager(app)
 
 # Configure CORS with specific settings
-CORS(app, resources={
-    r"/*": {
-        "origins": ["http://127.0.0.1:5173", "http://localhost:5173"],  # Frontend development server
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "supports_credentials": True,
-        "expose_headers": ["Authorization"]
-    }
-})
+CORS(app, 
+     resources={r"/*": {
+         "origins": ["http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:3000"],
+         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+         "supports_credentials": True,
+         "expose_headers": ["Authorization"]
+     }},
+     supports_credentials=True,
+     allow_credentials=True
+)
 
 # Initialize Socket.IO
-socketio = SocketIO(app, cors_allowed_origins=["http://127.0.0.1:5173", "http://localhost:5173"])
+socketio = SocketIO(app, cors_allowed_origins=["http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:3000"], supports_credentials=True)
 
 # Socket.IO event handlers
 @socketio.on('connect')

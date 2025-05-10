@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { FaStar, FaRegHeart, FaEye, FaGamepad } from 'react-icons/fa';
 import { FiTruck, FiHeadphones, FiShield, FiPhone, FiMonitor, FiWatch, FiCamera } from 'react-icons/fi';
 import { HiOutlineArrowLeft, HiOutlineArrowRight } from 'react-icons/hi';
@@ -187,9 +188,9 @@ const Home = () => {
           ))}
         </div>
         <div className="text-center mt-8">
-          <button className="border px-8 py-2 text-sm rounded text-red-500 border-red-500 hover:bg-red-500 hover:text-white font-medium">
+          <Link to="/products" className="inline-block border px-8 py-2 text-sm rounded text-red-500 border-red-500 hover:bg-red-500 hover:text-white font-medium transition duration-300">
             View All Products
-          </button>
+          </Link>
         </div>
       </section>
 
@@ -298,9 +299,9 @@ const Home = () => {
           ))}
         </div>
         <div className="text-center mt-8">
-          <button className="bg-red-500 text-white px-8 py-2 rounded">
+          <Link to="/products" className="inline-block bg-red-500 text-white px-8 py-2 rounded hover:bg-red-600 transition duration-300">
             View All Products
-          </button>
+          </Link>
         </div>
       </section>
 
@@ -313,32 +314,59 @@ const Home = () => {
           </div>
           <h3 className="text-xl font-bold">New Arrival</h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-          {newArrivals.length > 0 && (
-            <div className="bg-black text-white rounded-lg overflow-hidden h-96 relative">
-              <img src={newArrivals[0].image_url} alt={newArrivals[0].name} className="w-full h-full object-cover opacity-80" />
-              <div className="absolute inset-0 flex flex-col justify-end p-8">
-                <h3 className="text-2xl font-bold mb-2">{newArrivals[0].name}</h3>
-                <p className="mb-4 text-sm">{newArrivals[0].description}</p>
-                <button className="bg-transparent border border-white text-white px-4 py-1 rounded w-32">
+        <div className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* First New Arrival - Larger Card */}
+            <div className="md:col-span-2 bg-gradient-to-r from-gray-900 to-black text-white rounded-lg overflow-hidden h-96 relative group shadow-lg transform transition-transform duration-300 hover:scale-[1.01]">
+              <img 
+                src={newArrivals.length > 0 ? newArrivals[0].image_url : 'https://placehold.co/800x600/111827/FFFFFF?text=New+Arrival'} 
+                alt={newArrivals.length > 0 ? newArrivals[0].name : 'New Arrival'} 
+                className="w-full h-full object-cover opacity-90 group-hover:opacity-70 transition-opacity duration-300" 
+              />
+              <div className="absolute inset-0 flex flex-col justify-end p-8 bg-gradient-to-t from-black/80 to-transparent">
+                <span className="text-red-400 text-sm font-medium mb-2">NEW ARRIVAL</span>
+                <h3 className="text-2xl font-bold mb-2">{newArrivals.length > 0 ? newArrivals[0].name : 'Premium Collection'}</h3>
+                <p className="mb-4 text-sm text-gray-200">{newArrivals.length > 0 ? newArrivals[0].description : 'Discover our latest premium collection with exceptional quality and design.'}</p>
+                <button className="bg-transparent border border-white text-white px-4 py-2 rounded w-32 hover:bg-white hover:text-black transition-colors duration-300">
                   Shop Now
                 </button>
               </div>
             </div>
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {newArrivals.slice(1, 5).map((arrival, i) => (
-              <div key={i} className="bg-black text-white rounded-lg overflow-hidden h-44 relative">
-                <img src={arrival.image_url} alt={arrival.name} className="w-full h-full object-cover opacity-80" />
-                <div className="absolute inset-0 flex flex-col justify-end p-4">
-                  <h3 className="text-xl font-bold mb-1">{arrival.name}</h3>
-                  <p className="mb-2 text-xs">{arrival.description}</p>
-                  <button className="bg-transparent border border-white text-white px-3 py-1 rounded text-xs">
+            
+            {/* Second New Arrival - Vertical Card */}
+            <div className="flex flex-col gap-6 h-96">
+              {/* Top Card */}
+              <div className="flex-1 bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-lg overflow-hidden relative group shadow-lg transform transition-transform duration-300 hover:scale-[1.01]">
+                <img 
+                  src={newArrivals.length > 1 ? newArrivals[1].image_url : 'https://placehold.co/400x300/1F2937/FFFFFF?text=New+Style'} 
+                  alt={newArrivals.length > 1 ? newArrivals[1].name : 'New Style'} 
+                  className="w-full h-full object-cover opacity-90 group-hover:opacity-70 transition-opacity duration-300" 
+                />
+                <div className="absolute inset-0 flex flex-col justify-end p-4 bg-gradient-to-t from-black/80 to-transparent">
+                  <span className="text-red-400 text-xs font-medium mb-1">TRENDING</span>
+                  <h3 className="text-lg font-bold mb-1">{newArrivals.length > 1 ? newArrivals[1].name : 'Seasonal Collection'}</h3>
+                  <button className="bg-transparent border border-white text-white px-3 py-1 rounded text-xs hover:bg-white hover:text-black transition-colors duration-300 mt-2 w-24">
                     Shop Now
                   </button>
                 </div>
               </div>
-            ))}
+              
+              {/* Bottom Card - Placeholder */}
+              <div className="flex-1 bg-gradient-to-r from-gray-800 to-gray-700 text-white rounded-lg overflow-hidden relative group shadow-lg transform transition-transform duration-300 hover:scale-[1.01]">
+                <img 
+                  src="https://placehold.co/400x300/374151/FFFFFF?text=New+Collection" 
+                  alt="New Collection" 
+                  className="w-full h-full object-cover opacity-90 group-hover:opacity-70 transition-opacity duration-300" 
+                />
+                <div className="absolute inset-0 flex flex-col justify-end p-4 bg-gradient-to-t from-black/80 to-transparent">
+                  <span className="text-red-400 text-xs font-medium mb-1">EXCLUSIVE</span>
+                  <h3 className="text-lg font-bold mb-1">Limited Edition</h3>
+                  <button className="bg-transparent border border-white text-white px-3 py-1 rounded text-xs hover:bg-white hover:text-black transition-colors duration-300 mt-2 w-24">
+                    Shop Now
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

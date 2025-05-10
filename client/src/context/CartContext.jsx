@@ -39,6 +39,27 @@ const CartProvider = ({ children }) => {
       if (!response.ok) {
         if (response.status === 401) {
           console.log('Authentication failed - session may be invalid or expired');
+          // Try to refresh the token before giving up
+          try {
+            const authContext = useContext(AuthContext);
+            await authContext.refreshToken();
+            
+            // Try the request again after refreshing the token
+            const retryResponse = await fetch('http://localhost:5000/cart', {
+              method: 'GET',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (retryResponse.ok) {
+              const data = await retryResponse.json();
+              return data;
+            }
+          } catch (refreshError) {
+            console.error('Token refresh failed:', refreshError);
+          }
           return [];
         }
         throw new Error('Failed to fetch cart items');

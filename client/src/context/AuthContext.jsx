@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Check if user is authenticated on component mount
+  // Check if user is authenticated on component mount and set up token refresh
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
@@ -32,7 +32,21 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkAuthStatus();
-  }, []);
+
+    // Set up token refresh interval (every 45 minutes)
+    const refreshInterval = setInterval(async () => {
+      if (user) {
+        try {
+          await refreshToken();
+          console.log('Token refreshed successfully');
+        } catch (err) {
+          console.error('Failed to refresh token:', err);
+        }
+      }
+    }, 45 * 60 * 1000); // 45 minutes
+
+    return () => clearInterval(refreshInterval);
+  }, [user]); // Added user to dependency array
 
   // Login function
   const login = async (username, password) => {
