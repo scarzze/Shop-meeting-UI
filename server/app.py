@@ -1,16 +1,26 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, url_for, render_template
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager, create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from flask_jwt_extended import set_access_cookies, set_refresh_cookies, unset_jwt_cookies
 from flask_jwt_extended.exceptions import NoAuthorizationError
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from datetime import timedelta
+import os
 
 from config import Config
-from models import db, bcrypt, User, Product, Cart, CartItem, Order, OrderItem, Payment, Review, Favorite, SupportTicket
+from models import db, bcrypt, User, Product, Cart, CartItem, Order, OrderItem, Payment, Review, Favorite, SupportTicket, PaymentMethod
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Flask-Mail configuration removed
+
+# Set token expiration times
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
+app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
+app.config['JWT_COOKIE_CSRF_PROTECT'] = True
+app.config['JWT_COOKIE_SAMESITE'] = 'Lax'
 
 db.init_app(app)
 bcrypt.init_app(app)
@@ -21,7 +31,7 @@ jwt = JWTManager(app)
 CORS(app, 
      resources={r"/*": {
          "origins": ["http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:3000"],
-         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         "methods": ["GET", "POST", "DELETE"],
          "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
          "supports_credentials": True,
          "expose_headers": ["Authorization"]
@@ -94,6 +104,8 @@ def log_request_info():
 def index():
     return {'message': 'Welcome to Shop Meeting API'}
 
+# Email verification functionality removed
+
 # User Registration
 @app.route('/register', methods=['POST'])
 def register():
@@ -112,8 +124,15 @@ def register():
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
-
-    return jsonify({'message': 'User registered successfully'}), 201
+    
+    return jsonify({
+        'message': 'User registered successfully. You can now log in.',
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email
+        }
+    }), 201
 
 # User Login
 @app.route('/login', methods=['POST'])
@@ -133,14 +152,16 @@ def login():
     access_token = create_access_token(identity=user.id)
     refresh_token = create_refresh_token(identity=user.id)
     
-    # Set JWT cookies
+    # Set JWT cookies and also include token in response body
     response = jsonify({
         'message': 'Login successful',
         'user': {
             'id': user.id,
             'username': user.username,
             'email': user.email
-        }
+        },
+        'access_token': access_token,
+        'refresh_token': refresh_token
     })
     
     # Set cookies
@@ -148,6 +169,8 @@ def login():
     set_refresh_cookies(response, refresh_token)
     
     return response, 200
+
+# Email verification endpoints removed
 
 # User Logout
 @app.route('/logout', methods=['POST'])
@@ -162,7 +185,10 @@ def logout():
 def refresh():
     user_id = get_jwt_identity()
     access_token = create_access_token(identity=user_id)
-    response = jsonify({'message': 'Token refreshed'})
+    response = jsonify({
+        'message': 'Token refreshed',
+        'access_token': access_token
+    })
     set_access_cookies(response, access_token)
     return response, 200
 
@@ -172,10 +198,34 @@ def refresh():
 def get_user_profile():
     user_id = get_jwt_identity()
     user = User.query.get_or_404(user_id)
+    
+    # Get payment methods
+    payment_methods = [{
+        'id': pm.id,
+        'card_type': pm.card_type,
+        'last_four': pm.last_four,
+        'cardholder_name': pm.cardholder_name,
+        'expiry_date': pm.expiry_date,
+        'is_default': pm.is_default
+    } for pm in PaymentMethod.query.filter_by(user_id=user.id).all()]
+    
     return {
         'id': user.id,
         'username': user.username,
-        'email': user.email
+        'email': user.email,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'phone': user.phone,
+        'address': {
+            'address_line1': user.address_line1,
+            'address_line2': user.address_line2,
+            'city': user.city,
+            'state': user.state,
+            'postal_code': user.postal_code,
+            'country': user.country
+        },
+        'payment_methods': payment_methods,
+        'created_at': user.created_at.isoformat() if user.created_at else None
     }
 
 # Update profile
@@ -186,19 +236,235 @@ def update_profile():
     user = User.query.get_or_404(user_id)
     data = request.json or {}
 
-    username = data.get('username')
-    email = data.get('email')
-    password = data.get('password')
-
-    if username:
-        user.username = username
-    if email:
-        user.email = email
-    if password:
-        user.set_password(password)
+    # Basic info
+    if 'username' in data:
+        user.username = data['username']
+    if 'email' in data:
+        user.email = data['email']
+    if 'password' in data and data['password']:
+        user.set_password(data['password'])
+    if 'first_name' in data:
+        user.first_name = data['first_name']
+    if 'last_name' in data:
+        user.last_name = data['last_name']
+    if 'phone' in data:
+        user.phone = data['phone']
+    
+    # Address fields
+    address = data.get('address', {})
+    if address:
+        if 'address_line1' in address:
+            user.address_line1 = address['address_line1']
+        if 'address_line2' in address:
+            user.address_line2 = address['address_line2']
+        if 'city' in address:
+            user.city = address['city']
+        if 'state' in address:
+            user.state = address['state']
+        if 'postal_code' in address:
+            user.postal_code = address['postal_code']
+        if 'country' in address:
+            user.country = address['country']
 
     db.session.commit()
     return jsonify({'message': 'Profile updated successfully'})
+
+
+# Address Book
+@app.route('/address-book', methods=['GET'])
+@jwt_required()
+def get_address_book():
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    
+    return {
+        'address': {
+            'address_line1': user.address_line1,
+            'address_line2': user.address_line2,
+            'city': user.city,
+            'state': user.state,
+            'postal_code': user.postal_code,
+            'country': user.country
+        }
+    }
+
+@app.route('/address-book', methods=['POST'])
+@jwt_required()
+def update_address_book():
+    user_id = get_jwt_identity()
+    user = User.query.get_or_404(user_id)
+    data = request.json or {}
+    
+    if 'address_line1' in data:
+        user.address_line1 = data['address_line1']
+    if 'address_line2' in data:
+        user.address_line2 = data['address_line2']
+    if 'city' in data:
+        user.city = data['city']
+    if 'state' in data:
+        user.state = data['state']
+    if 'postal_code' in data:
+        user.postal_code = data['postal_code']
+    if 'country' in data:
+        user.country = data['country']
+    
+    db.session.commit()
+    return jsonify({'message': 'Address updated successfully'})
+
+
+# Payment Options
+@app.route('/payment-options', methods=['GET'])
+@jwt_required()
+def get_payment_options():
+    user_id = get_jwt_identity()
+    payment_methods = PaymentMethod.query.filter_by(user_id=user_id).all()
+    
+    return jsonify({
+        'payment_methods': [{
+            'id': pm.id,
+            'card_type': pm.card_type,
+            'last_four': pm.last_four,
+            'cardholder_name': pm.cardholder_name,
+            'expiry_date': pm.expiry_date,
+            'is_default': pm.is_default
+        } for pm in payment_methods]
+    })
+
+@app.route('/payment-options', methods=['POST'])
+@jwt_required()
+def add_payment_option():
+    user_id = get_jwt_identity()
+    data = request.json or {}
+    
+    # Check if this is the first payment method (make it default)
+    is_default = False
+    if PaymentMethod.query.filter_by(user_id=user_id).count() == 0:
+        is_default = True
+    
+    # Create new payment method
+    payment_method = PaymentMethod(
+        user_id=user_id,
+        card_type=data.get('card_type'),
+        last_four=data.get('last_four'),
+        cardholder_name=data.get('cardholder_name'),
+        expiry_date=data.get('expiry_date'),
+        is_default=data.get('is_default', is_default)
+    )
+    
+    # If this is set as default, unset other defaults
+    if payment_method.is_default:
+        PaymentMethod.query.filter_by(user_id=user_id, is_default=True).update({PaymentMethod.is_default: False})
+    
+    db.session.add(payment_method)
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Payment method added successfully',
+        'payment_method': {
+            'id': payment_method.id,
+            'card_type': payment_method.card_type,
+            'last_four': payment_method.last_four,
+            'cardholder_name': payment_method.cardholder_name,
+            'expiry_date': payment_method.expiry_date,
+            'is_default': payment_method.is_default
+        }
+    }), 201
+
+@app.route('/payment-options/<int:payment_id>', methods=['DELETE'])
+@jwt_required()
+def delete_payment_option(payment_id):
+    user_id = get_jwt_identity()
+    payment_method = PaymentMethod.query.filter_by(id=payment_id, user_id=user_id).first_or_404()
+    
+    was_default = payment_method.is_default
+    db.session.delete(payment_method)
+    
+    # If deleted method was default, set a new default if any methods remain
+    if was_default:
+        remaining = PaymentMethod.query.filter_by(user_id=user_id).first()
+        if remaining:
+            remaining.is_default = True
+    
+    db.session.commit()
+    return jsonify({'message': 'Payment method deleted successfully'})
+
+
+# My Orders
+@app.route('/my-orders', methods=['GET'])
+@jwt_required()
+def get_my_orders():
+    user_id = get_jwt_identity()
+    orders = Order.query.filter_by(user_id=user_id).order_by(Order.created_at.desc()).all()
+    
+    return jsonify({
+        'orders': [{
+            'id': order.id,
+            'created_at': order.created_at.isoformat(),
+            'status': order.status,
+            'shipping_address': order.shipping_address,
+            'items': [{
+                'id': item.id,
+                'product_id': item.product_id,
+                'product_name': item.product.name if item.product else 'Unknown Product',
+                'quantity': item.quantity,
+                'price': item.price_at_purchase
+            } for item in order.items],
+            'payment': {
+                'amount': order.payment.amount,
+                'status': order.payment.status,
+                'payment_method': order.payment.payment_method
+            } if order.payment else None
+        } for order in orders]
+    })
+
+
+# My Returns
+@app.route('/my-returns', methods=['GET'])
+@jwt_required()
+def get_my_returns():
+    user_id = get_jwt_identity()
+    # Filter orders with status 'Returned' or 'Return Requested'
+    returns = Order.query.filter(Order.user_id == user_id, 
+                                Order.status.in_(['Returned', 'Return Requested']))\
+                         .order_by(Order.created_at.desc()).all()
+    
+    return jsonify({
+        'returns': [{
+            'id': order.id,
+            'created_at': order.created_at.isoformat(),
+            'status': order.status,
+            'items': [{
+                'id': item.id,
+                'product_name': item.product.name if item.product else 'Unknown Product',
+                'quantity': item.quantity,
+                'price': item.price_at_purchase
+            } for item in order.items]
+        } for order in returns]
+    })
+
+
+# My Cancellations
+@app.route('/my-cancellations', methods=['GET'])
+@jwt_required()
+def get_my_cancellations():
+    user_id = get_jwt_identity()
+    # Filter orders with status 'Cancelled'
+    cancellations = Order.query.filter_by(user_id=user_id, status='Cancelled')\
+                              .order_by(Order.created_at.desc()).all()
+    
+    return jsonify({
+        'cancellations': [{
+            'id': order.id,
+            'created_at': order.created_at.isoformat(),
+            'status': order.status,
+            'items': [{
+                'id': item.id,
+                'product_name': item.product.name if item.product else 'Unknown Product',
+                'quantity': item.quantity,
+                'price': item.price_at_purchase
+            } for item in order.items]
+        } for order in cancellations]
+    })
 
 
 # Get All Products
@@ -213,6 +479,24 @@ def get_products():
         'stock': p.stock,
         'image_url': p.image_url,
         'category': p.category  # Include category in the response
+    } for p in products])
+
+# Get Products by Category
+@app.route('/products/category/<category>', methods=['GET'])
+def get_products_by_category(category):
+    # URL decode the category name to handle spaces and special characters
+    from urllib.parse import unquote
+    category = unquote(category)
+    
+    products = Product.query.filter_by(category=category).all()
+    return jsonify([{
+        'id': p.id,
+        'name': p.name,
+        'description': p.description,
+        'price': p.price,
+        'stock': p.stock,
+        'image_url': p.image_url,
+        'category': p.category
     } for p in products])
 
 # Get Product by ID
