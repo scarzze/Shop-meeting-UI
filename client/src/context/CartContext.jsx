@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
 import { AuthContext } from './AuthContext';
+import api from '../utils/axiosConfig';
 
 export const CartContext = createContext();
 
@@ -19,136 +20,252 @@ const CartProvider = ({ children }) => {
     }, 0);
     setCartTotal(total);
   }, []);
+  
+  // Save cart to local storage
+  const saveCartToLocalStorage = useCallback((items) => {
+    localStorage.setItem('cart', JSON.stringify(items));
+  }, []);
+  
+  // Load cart from local storage
+  const loadCartFromLocalStorage = useCallback(() => {
+    const storedCart = localStorage.getItem('cart');
+    if (storedCart) {
+      try {
+        return JSON.parse(storedCart);
+      } catch (error) {
+        console.error('Error parsing cart from local storage:', error);
+        return [];
+      }
+    }
+    return [];
+  }, []);
+
+  // Cache for cart items to avoid redundant API calls
+  const [cartCache, setCartCache] = useState({
+    data: null,
+    timestamp: null,
+    expiryTime: 2 * 60 * 1000 // 2 minutes cache validity
+  });
 
   // Fetch cart items
-  const fetchCartItems = async () => {
-    if (!isAuthenticated) {
-      console.log('User not authenticated, returning empty cart');
-      return [];
+  const fetchCartItems = async (forceRefresh = false) => {
+    // For non-authenticated users, always use local storage
+    if (!isAuthenticated()) {
+      console.log('User not authenticated, loading cart from local storage');
+      return loadCartFromLocalStorage();
+    }
+    
+    // Return cached data if available and not expired
+    const now = Date.now();
+    if (!forceRefresh && 
+        cartCache.data && 
+        cartCache.timestamp && 
+        (now - cartCache.timestamp < cartCache.expiryTime)) {
+      console.log('Using cached cart items');
+      return cartCache.data;
     }
     
     try {      
-      const response = await fetch('http://localhost:5000/cart', {
-        method: 'GET',
-        credentials: 'include', // Important for cookies to be sent
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      const response = await api.get('/cart');
+      
+      // Update cache
+      setCartCache({
+        data: response.data,
+        timestamp: now,
+        expiryTime: 2 * 60 * 1000
       });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          console.log('Authentication failed - session may be invalid or expired');
-          // Try to refresh the token before giving up
-          try {
-            const authContext = useContext(AuthContext);
-            await authContext.refreshToken();
-            
-            // Try the request again after refreshing the token
-            const retryResponse = await fetch('http://localhost:5000/cart', {
-              method: 'GET',
-              credentials: 'include',
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            });
-            
-            if (retryResponse.ok) {
-              const data = await retryResponse.json();
-              return data;
-            }
-          } catch (refreshError) {
-            console.error('Token refresh failed:', refreshError);
-          }
-          return [];
-        }
-        throw new Error('Failed to fetch cart items');
-      }
-
-      const data = await response.json();
-      return data;
+      
+      return response.data;
     } catch (error) {
       console.error('Error fetching cart items:', error);
-      return [];
+      return loadCartFromLocalStorage();
     }
   };
 
   // Update cart item quantity with optimistic update
   const updateCartItemQuantity = async (itemId, quantity) => {
+    if (!isAuthenticated()) {
+      // Update local storage cart
+      const localCart = loadCartFromLocalStorage();
+      const updatedCart = localCart.map(item => 
+        item.item_id === itemId ? { ...item, quantity } : item
+      );
+      
+      saveCartToLocalStorage(updatedCart);
+      setCartItems(updatedCart);
+      calculateTotal(updatedCart);
+      return { success: true, cart: updatedCart };
+    }
+    
     try {
-      const response = await fetch(`http://localhost:5000/cart/${itemId}`, {
-        method: 'POST',
-        credentials: 'include', // Important for cookies to be sent
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ quantity })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update cart item');
+      // Optimistic update - update cart state immediately before API call
+      if (cartCache.data) {
+        const updatedCache = cartCache.data.map(item => 
+          item.item_id === itemId ? { ...item, quantity } : item
+        );
+        
+        setCartCache({
+          ...cartCache,
+          data: updatedCache,
+          timestamp: Date.now()
+        });
+        
+        setCartItems(updatedCache);
+        calculateTotal(updatedCache);
       }
-
-      const data = await response.json();
-      return data;
+      
+      const response = await api.post(`/cart/${itemId}`, { quantity });
+      return response.data;
     } catch (error) {
       console.error('Error updating cart item:', error);
+      // Revert optimistic update on error by refreshing
+      await fetchCartItems(true);
       throw error;
     }
   };
 
   // Add to cart with optimistic update
-  const addToCart = async (productId, quantity = 1) => {
-    try {
-      const response = await fetch('http://localhost:5000/cart', {
-        method: 'POST',
-        credentials: 'include', // Important for cookies to be sent
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ product_id: productId, quantity })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add item to cart');
+  const addToCart = async (productId, quantity = 1, productDetails = null) => {
+    if (!isAuthenticated()) {
+      // Add to local storage cart
+      const localCart = loadCartFromLocalStorage();
+      
+      // Check if the item already exists in the cart
+      const existingItemIndex = localCart.findIndex(item => 
+        item.product_id === productId || item.id === productId
+      );
+      
+      let updatedCart;
+      
+      if (existingItemIndex >= 0) {
+        // Update quantity if item exists
+        updatedCart = localCart.map((item, index) => 
+          index === existingItemIndex 
+            ? { ...item, quantity: parseInt(item.quantity, 10) + parseInt(quantity, 10) } 
+            : item
+        );
+      } else {
+        // Add new item if it doesn't exist
+        // If we have product details, use them, otherwise create a minimal item
+        const newItem = productDetails || {
+          item_id: `local-${Date.now()}`,
+          product_id: productId,
+          id: productId,
+          quantity: quantity,
+          // These fields will be populated when product details are fetched
+          name: "Product",
+          price: 0,
+          image_url: "/images/placeholder.png"
+        };
+        
+        // Ensure the item has the correct structure
+        const cartItem = {
+          ...newItem,
+          item_id: newItem.item_id || `local-${Date.now()}`,
+          product_id: productId,
+          quantity: quantity
+        };
+        
+        updatedCart = [...localCart, cartItem];
       }
-
-      const data = await response.json();
-      return data;
+      
+      saveCartToLocalStorage(updatedCart);
+      setCartItems(updatedCart);
+      calculateTotal(updatedCart);
+      return { success: true, cart: updatedCart };
+    }
+    
+    try {
+      // Optimistic update for authenticated users
+      if (cartCache.data) {
+        let updatedCache;
+        
+        // Check if the item already exists in the cart
+        const existingItem = cartCache.data.find(item => 
+          item.product_id === productId || item.id === productId
+        );
+        
+        if (existingItem) {
+          // Update quantity if item exists
+          updatedCache = cartCache.data.map(item => 
+            (item.product_id === productId || item.id === productId)
+              ? { ...item, quantity: parseInt(item.quantity, 10) + parseInt(quantity, 10) }
+              : item
+          );
+        } else if (productDetails) {
+          // Add new item with product details
+          const cartItem = {
+            ...productDetails,
+            item_id: productDetails.item_id || `temp-${Date.now()}`,
+            product_id: productId,
+            quantity: quantity
+          };
+          updatedCache = [...cartCache.data, cartItem];
+        }
+        
+        // Only update cache if we have enough information
+        if (updatedCache) {
+          setCartCache({
+            ...cartCache,
+            data: updatedCache,
+            timestamp: Date.now()
+          });
+          
+          setCartItems(updatedCache);
+          calculateTotal(updatedCache);
+        }
+      }
+      
+      const response = await api.post('/cart', { product_id: productId, quantity });
+      
+      // Refresh cart data after adding item to ensure consistency
+      const freshCartData = await fetchCartItems(true);
+      setCartItems(freshCartData);
+      calculateTotal(freshCartData);
+      
+      return response.data;
     } catch (error) {
       console.error('Error adding to cart:', error);
+      // Revert optimistic update on error by refreshing
+      await fetchCartItems(true);
       throw error;
     }
   };
 
   // Remove cart item with optimistic update
   const removeFromCart = async (itemId) => {
+    if (!isAuthenticated()) {
+      // Remove from local storage cart
+      const localCart = loadCartFromLocalStorage();
+      const updatedCart = localCart.filter(item => item.item_id !== itemId);
+      
+      saveCartToLocalStorage(updatedCart);
+      setCartItems(updatedCart);
+      calculateTotal(updatedCart);
+      return { success: true, cart: updatedCart };
+    }
+    
     try {
-      if (!isAuthenticated) {
-        console.error('User not authenticated');
-        throw new Error('Authentication required');
+      // Optimistic update - remove item from state immediately before API call
+      if (cartCache.data) {
+        const updatedCache = cartCache.data.filter(item => item.item_id !== itemId);
+        
+        setCartCache({
+          ...cartCache,
+          data: updatedCache,
+          timestamp: Date.now()
+        });
+        
+        setCartItems(updatedCache);
+        calculateTotal(updatedCache);
       }
       
-      const response = await fetch(`http://localhost:5000/cart/${itemId}`, {
-        method: 'DELETE',
-        credentials: 'include', // Important for cookies to be sent
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          console.error('Authentication failed - session may be invalid or expired');
-          throw new Error('Authentication required. Please log in again.');
-        }
-        throw new Error('Failed to remove item from cart');
-      }
-
-      const data = await response.json();
-      return data;
+      const response = await api.delete(`/cart/${itemId}`);
+      return response.data;
     } catch (error) {
       console.error('Error removing from cart:', error);
+      // Revert optimistic update on error by refreshing
+      await fetchCartItems(true);
       throw error;
     }
   };
@@ -157,7 +274,8 @@ const CartProvider = ({ children }) => {
   const clearCart = useCallback(() => {
     setCartItems([]);
     setCartTotal(0);
-  }, []);
+    saveCartToLocalStorage([]);
+  }, [saveCartToLocalStorage]);
 
   useEffect(() => {
     let isMounted = true;
@@ -165,28 +283,74 @@ const CartProvider = ({ children }) => {
     const initializeCart = async () => {
       if (isMounted) {
         try {
-          if (isAuthenticated) {
-            const data = await fetchCartItems();
-            setCartItems(data);
-            calculateTotal(data);
-          } else {
-            // Clear cart if not authenticated
-            setCartItems([]);
-            setCartTotal(0);
-          }
+          setLoading(true);
+          const data = await fetchCartItems();
+          setCartItems(data);
+          calculateTotal(data);
+          setLoading(false);
         } catch (error) {
           setError(error.message);
+          setLoading(false);
         }
       }
     };
 
     initializeCart();
     
+    // Set up a refresh interval for authenticated users
+    let refreshInterval;
+    if (isAuthenticated()) {
+      refreshInterval = setInterval(() => {
+        if (isMounted) {
+          // Refresh cart data in the background every 5 minutes
+          fetchCartItems(true).then(data => {
+            if (isMounted) {
+              setCartItems(data);
+              calculateTotal(data);
+            }
+          }).catch(err => console.error('Background cart refresh error:', err));
+        }
+      }, 5 * 60 * 1000); // 5 minutes
+    }
+    
     return () => {
       isMounted = false;
+      if (refreshInterval) clearInterval(refreshInterval);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, calculateTotal]);
+  
+  // Sync cart with local storage when authenticated state changes
+  useEffect(() => {
+    const syncCartWithServer = async () => {
+      if (isAuthenticated()) {
+        // If user just logged in, we might want to merge their local cart with server cart
+        const localCart = loadCartFromLocalStorage();
+        
+        if (localCart.length > 0) {
+          // For each item in local cart, add to server cart
+          for (const item of localCart) {
+            try {
+              await addToCart(item.product_id || item.id, item.quantity);
+            } catch (error) {
+              console.error('Error syncing local cart item to server:', error);
+            }
+          }
+          
+          // Clear local cart after syncing
+          saveCartToLocalStorage([]);
+          
+          // Fetch the updated cart from server
+          const serverCart = await fetchCartItems();
+          setCartItems(serverCart);
+          calculateTotal(serverCart);
+        }
+      }
+    };
+    
+    syncCartWithServer();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   return (
     <CartContext.Provider

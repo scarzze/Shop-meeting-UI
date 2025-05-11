@@ -1,53 +1,21 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useState, useCallback, memo } from 'react';
 import { Trash2, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
 import { WishlistContext } from '../context/WishlistContext';
 
-// Recommended items will be static for now, but could be fetched from backend in future
-const recommendedItems = [
-  {
-    id: 1,
-    name: 'ASUS FHD Gaming Laptop',
-    price: 9600,
-    oldPrice: 11600,
-    discount: '-35%',
-    rating: 5,
-    image: '/images/laptop.png'
-  },
-  {
-    id: 2,
-    name: 'IPS LCD Gaming Monitor',
-    price: 11600,
-    rating: 5,
-    image: '/images/monitor.png'
-  },
-  {
-    id: 3,
-    name: 'HAVIT HV-G92 Gamepad',
-    price: 5600,
-    isNew: true,
-    rating: 5,
-    image: '/images/red-gamepad.png'
-  },
-  {
-    id: 4,
-    name: 'AK-900 Wired Keyboard',
-    price: 2000,
-    rating: 5,
-    image: '/images/keyboard.png'
-  },
-];
+// Recommended items are now fetched dynamically from the WishlistContext
 
 // Reusable Product Card component
-const ProductCard = ({ item, isWishlistItem = false, onAction, actionText, actionIcon }) => {
+// Memoized Product Card component to prevent unnecessary re-renders
+const ProductCard = React.memo(({ item, isWishlistItem = false, onAction, actionText, actionIcon }) => {
   const { addToCart } = useContext(CartContext);
   
   // Handle image error
-  const handleImageError = (e) => {
+  const handleImageError = useCallback((e) => {
     e.target.src = '/images/placeholder.png';
     e.target.onerror = null;
-  };
+  }, []);
 
   return (
     <div key={item.id || item.product_id} className="relative border p-4 group">
@@ -106,44 +74,80 @@ const ProductCard = ({ item, isWishlistItem = false, onAction, actionText, actio
       </button>
     </div>
   );
-};
+});
 
 const Wishlist = () => {
   const { addToCart } = useContext(CartContext);
   const { 
     wishlistItems, 
+    recommendedItems,
     loading, 
+    recommendedLoading,
     error, 
+    recommendedError,
     fetchWishlistItems, 
     removeFromWishlist, 
     moveToCart, 
-    moveAllToCart 
+    moveAllToCart,
+    fetchRecommendedItems
   } = useContext(WishlistContext);
+  
+  const [notification, setNotification] = useState({ message: '', type: '' });
 
+  // Only fetch wishlist items on mount and when dependencies change
   useEffect(() => {
     fetchWishlistItems();
+    // We don't need to check wishlistItems.length here as the WishlistContext
+    // will handle fetching recommended items when wishlist changes
   }, [fetchWishlistItems]);
 
-  const handleMoveToCart = async (item) => {
-    const success = await moveToCart(item.product_id);
-    if (success) {
-      alert(`${item.name} has been moved to the cart.`);
-    }
-  };
+  // Memoize the notification setter to avoid creating new functions on each render
+  const showNotification = useCallback((message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification({ message: '', type: '' }), 3000);
+  }, []);
 
-  const handleRemoveFromWishlist = async (item) => {
-    const success = await removeFromWishlist(item.product_id);
-    if (success) {
-      alert(`${item.name} has been removed from your wishlist.`);
+  const handleMoveToCart = useCallback(async (item) => {
+    try {
+      const result = await moveToCart(item.product_id);
+      if (result.success) {
+        showNotification(`${item.name} has been moved to the cart.`);
+      } else {
+        showNotification(result.error || 'Failed to move item to cart', 'error');
+      }
+    } catch (error) {
+      console.error('Error moving item to cart:', error);
+      showNotification(error.message || 'Failed to move item to cart', 'error');
     }
-  };
+  }, [moveToCart, showNotification]);
 
-  const handleMoveAllToCart = async () => {
-    const success = await moveAllToCart();
-    if (success) {
-      alert('All items have been moved to your cart.');
+  const handleRemoveFromWishlist = useCallback(async (item) => {
+    try {
+      const result = await removeFromWishlist(item.product_id);
+      if (result.success) {
+        showNotification(`${item.name} has been removed from your wishlist.`);
+      } else {
+        showNotification(result.error || 'Failed to remove item from wishlist', 'error');
+      }
+    } catch (error) {
+      console.error('Error removing item from wishlist:', error);
+      showNotification(error.message || 'Failed to remove item from wishlist', 'error');
     }
-  };
+  }, [removeFromWishlist, showNotification]);
+
+  const handleMoveAllToCart = useCallback(async () => {
+    try {
+      const result = await moveAllToCart();
+      if (result.success) {
+        showNotification('All items have been moved to your cart.');
+      } else {
+        showNotification(result.error || 'Failed to move all items to cart', 'error');
+      }
+    } catch (error) {
+      console.error('Error moving all items to cart:', error);
+      showNotification(error.message || 'Failed to move all items to cart', 'error');
+    }
+  }, [moveAllToCart, showNotification]);
 
   // Render empty wishlist message
   const renderEmptyWishlist = () => (
@@ -156,7 +160,13 @@ const Wishlist = () => {
   );
 
   return (
-    <div className="px-6 md:px-12 py-10 space-y-12">
+    <div className="px-6 md:px-12 py-10 space-y-12 relative">
+      {/* Notification */}
+      {notification.message && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded shadow-lg ${notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {notification.message}
+        </div>
+      )}
       {/* Wishlist Header */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold">Wishlist ({wishlistItems.length})</h2>
@@ -206,14 +216,22 @@ const Wishlist = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {recommendedItems.map(item => (
-              <ProductCard 
-                key={item.id}
-                item={item} 
-                actionText="Add To Cart"
-                actionIcon={<Eye size={16} />}
-              />
-            ))}
+            {recommendedLoading ? (
+              <div className="col-span-full text-center py-8">Loading recommended items...</div>
+            ) : recommendedError ? (
+              <div className="col-span-full text-center py-8 text-red-500">{recommendedError}</div>
+            ) : recommendedItems.length === 0 ? (
+              <div className="col-span-full text-center py-8">No recommendations available.</div>
+            ) : (
+              recommendedItems.map(item => (
+                <ProductCard 
+                  key={item.id || item.product_id}
+                  item={item} 
+                  actionText="Add To Cart"
+                  actionIcon={<Eye size={16} />}
+                />
+              ))
+            )}
           </div>
         </div>
       )}

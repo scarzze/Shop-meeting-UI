@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { CartContext } from '../context/CartContext';
 import axios from 'axios';
 
 const Register = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
+  const { fetchCartItems } = useContext(CartContext);
   const [notification, setNotification] = useState({ message: '', type: '' });
 
   const handleGoogleSignUp = () => {
@@ -15,15 +19,36 @@ const Register = () => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = {
-      username: formData.get('username'), // Updated to include username
+      username: formData.get('username'),
       email: formData.get('email'),
       password: formData.get('password'),
     };
 
     try {
+      // Register the user
       const response = await axios.post('http://localhost:5000/register', data);
-      setNotification({ message: 'Registration successful', type: 'success' });
-      setTimeout(() => navigate('/login'), 1000); // Redirect to login page after 1 second
+      setNotification({ message: 'Registration successful! Logging you in...', type: 'success' });
+      
+      // Automatically log in the user after successful registration
+      try {
+        const loginResult = await login(data.username, data.password);
+        
+        if (loginResult.success) {
+          // Fetch cart items to trigger the cart synchronization
+          // The CartContext useEffect will handle merging localStorage cart with server cart
+          await fetchCartItems();
+          
+          // Navigate to home page
+          setTimeout(() => navigate('/'), 1000);
+        } else {
+          // If login fails, redirect to login page
+          setTimeout(() => navigate('/login'), 1000);
+        }
+      } catch (loginError) {
+        console.error('Auto-login failed after registration:', loginError);
+        // If auto-login fails, redirect to login page
+        setTimeout(() => navigate('/login'), 1000);
+      }
     } catch (error) {
       if (error.response?.status === 409) { // Conflict status code for existing user
         setNotification({ message: 'User already exists. Please log in.', type: 'error' });

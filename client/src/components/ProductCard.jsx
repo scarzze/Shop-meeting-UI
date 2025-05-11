@@ -26,6 +26,8 @@ const ProductCard = ({ product, showPrice = true, showRatings = true }) => {
 
   const handleProductClick = () => {
     navigate(`/product/${product.id}`);
+    // Scroll to top of the page when navigating to product detail
+    window.scrollTo(0, 0);
   };
 
   // Use image_url if available, fallback to image

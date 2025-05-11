@@ -1,9 +1,26 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { FiShoppingCart, FiHeart, FiUser, FiSearch } from 'react-icons/fi';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeadset } from '@fortawesome/free-solid-svg-icons';
+import { Link, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
+import { CartContext } from '../context/CartContext';
+import { WishlistContext } from '../context/WishlistContext';
 
 const Navbar = () => {
+  const { isAuthenticated } = useContext(AuthContext);
+  const { cartItems } = useContext(CartContext);
+  const { wishlistItems } = useContext(WishlistContext);
+  const navigate = useNavigate();
+  
+  const handleProfileClick = (e) => {
+    e.preventDefault();
+    if (isAuthenticated()) {
+      navigate('/profile');
+    } else {
+      navigate('/login', { state: { from: '/profile' } });
+    }
+  };
   return (
     <header className="bg-white border-b sticky top-0 z-50">
       {/* Top banner */}
@@ -17,10 +34,12 @@ const Navbar = () => {
         <div className="text-2xl font-bold">ShopMeeting</div>
 
         <nav className="hidden md:flex gap-6 text-gray-700 font-medium">
-          <a href="/" className="hover:text-black transition">Home</a>
-          <a href="/about" className="hover:text-black transition">About</a>
-          <a href="/wishlist" className="hover:text-black transition">Wishlist</a>
-          <a href="/register" className="hover:text-black transition">Sign Up</a>
+          <Link to="/" className="hover:text-black transition">Home</Link>
+          <Link to="/about" className="hover:text-black transition">About</Link>
+          <Link to="/wishlist" className="hover:text-black transition">Wishlist</Link>
+          {!isAuthenticated() && (
+            <Link to="/register" className="hover:text-black transition">Sign Up</Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-6">
@@ -36,18 +55,28 @@ const Navbar = () => {
 
           {/* Icons */}
           <div className="flex gap-4 items-center text-gray-700">
-            <a href="/wishlist">
+            <Link to="/wishlist" className="relative">
               <FiHeart className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
-            </a>
-            <a href="/cart">
+              {wishlistItems.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                  {wishlistItems.length}
+                </span>
+              )}
+            </Link>
+            <Link to="/cart" className="relative">
               <FiShoppingCart className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
-            </a>
-            <a href="/profile">
+              {cartItems.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                  {cartItems.length}
+                </span>
+              )}
+            </Link>
+            <a href="#" onClick={handleProfileClick}>
               <FiUser className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
             </a>
-            <a href="/contact">
+            <Link to="/contact">
               <FontAwesomeIcon icon={faHeadset} className="w-5 h-5 cursor-pointer transition-colors duration-200 hover:text-red-500" />
-            </a>
+            </Link>
           </div>
         </div>
       </div>

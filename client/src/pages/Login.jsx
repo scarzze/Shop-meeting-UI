@@ -1,16 +1,25 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useContext } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { CartContext } from '../context/CartContext';
+import axios from 'axios';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
+  const { fetchCartItems } = useContext(CartContext);
   const [notification, setNotification] = useState({ message: '', type: '' });
+  
+  // Get the path the user was trying to access before being redirected to login
+  const from = location.state?.from?.pathname || '/';
 
   const handleGoogleLogin = () => {
     // TODO: Implement actual Google authentication
     console.log('Google login clicked');
   };
+
+  // Email verification state removed
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -23,7 +32,13 @@ const Login = () => {
       
       if (result.success) {
         setNotification({ message: 'Login successful', type: 'success' });
-        setTimeout(() => navigate('/'), 1000);
+        
+        // Fetch cart items to trigger the cart synchronization
+        // The CartContext useEffect will handle merging localStorage cart with server cart
+        await fetchCartItems();
+        
+        // Navigate to the page the user was trying to access, or home if none
+        setTimeout(() => navigate(from), 1000);
       } else {
         setNotification({ message: result.error || 'Login failed', type: 'error' });
       }
@@ -31,6 +46,7 @@ const Login = () => {
       setNotification({ message: error.message || 'Login failed', type: 'error' });
     }
   };
+  // Email verification resend function removed
 
   return (
     <div className="min-h-screen bg-white flex flex-col justify-between">
@@ -118,6 +134,7 @@ const Login = () => {
               Don't have an account?{' '}
               <Link to="/register" className="text-red-500 hover:underline">Sign Up</Link>
             </p>
+            {/* Email verification UI removed */}
           </form>
         </div>
       </div>

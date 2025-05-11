@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useContext } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { FaHeart, FaRegHeart } from 'react-icons/fa';
 import { Cloudinary } from '@cloudinary/url-gen';
 import { fill } from '@cloudinary/url-gen/actions/resize';
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
+import { AuthContext } from '../context/AuthContext';
+import { CartContext } from '../context/CartContext';
+import { WishlistContext } from '../context/WishlistContext';
+import { addToRecentlyViewed, getRecentlyViewed } from '../utils/localStorageService';
 
 const cld = new Cloudinary({
   cloud: {
@@ -28,7 +31,9 @@ const getCloudinaryImageUrl = (publicId, width, height) => {
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useContext(AuthContext);
+  const { addToCart } = useContext(CartContext);
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useContext(WishlistContext);
   const [product, setProduct] = useState(null);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [inCart, setInCart] = useState(false);
@@ -36,6 +41,7 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
+  const [recentlyViewed, setRecentlyViewed] = useState([]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -58,6 +64,19 @@ const ProductDetail = () => {
         if (!data.reviews) data.reviews = 0;
         
         setProduct(data);
+        
+        // Add to recently viewed
+        addToRecentlyViewed(data);
+        
+        // Get recently viewed products
+        const recentProducts = getRecentlyViewed();
+        // Filter out the current product from recently viewed
+        setRecentlyViewed(recentProducts.filter(item => item.id !== data.id));
+        
+        // Check if product is in wishlist
+        if (isInWishlist) {
+          setIsWishlisted(isInWishlist(data.id));
+        }
         
         // Fetch related products
         fetchRelatedProducts(data.category);
@@ -86,7 +105,7 @@ const ProductDetail = () => {
     };
 
     fetchProduct();
-  }, [id]);
+  }, [id, isInWishlist]);
 
   const handleQuantityChange = (change) => {
     const newQuantity = selectedQuantity + change;
@@ -96,53 +115,29 @@ const ProductDetail = () => {
   };
 
   const handleAddToCart = async () => {
-    if (!isAuthenticated()) {
-      // Redirect to login if not authenticated
-      navigate('/login', { state: { from: `/product/${id}` } });
-      return;
-    }
-    
     try {
-      const response = await axios.post('http://localhost:5000/cart', {
-        product_id: product.id,
-        quantity: selectedQuantity
-      }, {
-        withCredentials: true
-      });
-      
-      if (response.status === 200) {
-        setInCart(true);
-        setTimeout(() => navigate('/cart'), 1000); // Redirect to cart after 1 second
-      }
+      // Use the CartContext addToCart function which handles both authenticated and unauthenticated users
+      await addToCart(product.id, selectedQuantity, product);
+      setInCart(true);
+      setTimeout(() => navigate('/cart'), 1000); // Redirect to cart after 1 second
     } catch (error) {
-      console.error('Error adding to cart:', error.response?.data || error.message);
+      console.error('Error adding to cart:', error);
     }
   };
 
   const toggleWishlist = async () => {
-    if (!isAuthenticated()) {
-      navigate('/login', { state: { from: `/product/${id}` } });
-      return;
-    }
-    
     try {
-      const endpoint = isWishlisted ? 
-        `http://localhost:5000/wishlist/${product.id}` : 
-        'http://localhost:5000/wishlist';
-      
       if (isWishlisted) {
-        const response = await axios.delete(endpoint, { withCredentials: true });
-        if (response.status === 200) {
-          setIsWishlisted(false);
-        }
+        // Remove from wishlist
+        await removeFromWishlist(product.id);
+        setIsWishlisted(false);
       } else {
-        const response = await axios.post(endpoint, { product_id: product.id }, { withCredentials: true });
-        if (response.status === 200) {
-          setIsWishlisted(true);
-        }
+        // Add to wishlist
+        await addToWishlist(product.id, product);
+        setIsWishlisted(true);
       }
     } catch (error) {
-      console.error('Error updating wishlist:', error.response?.data || error.message);
+      console.error('Error updating wishlist:', error);
     }
   };
 
@@ -291,17 +286,27 @@ const ProductDetail = () => {
         </div>
       </div>
       
-      {/* Related Products */}
-      {relatedProducts.length > 0 && (
+      {/* Recently Viewed Products */}
+      {recentlyViewed.length > 0 && (
         <div className="mt-16">
-          <h2 className="text-xl font-bold mb-6 border-b pb-2">You might also like</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            {relatedProducts.map((relatedProduct) => (
-              <ProductCard key={relatedProduct.id} product={relatedProduct} />
+          <h2 className="text-2xl font-bold mb-6">Recently Viewed</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {recentlyViewed.slice(0, 4).map(viewedProduct => (
+              <ProductCard key={viewedProduct.id} product={viewedProduct} />
             ))}
           </div>
         </div>
       )}
+      
+      {/* Related Products */}
+      <div className="mt-16">
+        <h2 className="text-2xl font-bold mb-6">Related Products</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {relatedProducts.map(relatedProduct => (
+            <ProductCard key={relatedProduct.id} product={relatedProduct} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

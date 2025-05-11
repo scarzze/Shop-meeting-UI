@@ -11,6 +11,7 @@ flask-migrate = "*"
 psycopg2-binary = "*"
 python-dotenv = "*"
 flask-bcrypt = "*"
+flask-mail = "*"
 
 [dev-packages]
 

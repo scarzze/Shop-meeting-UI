@@ -7,6 +7,7 @@ import { Carousel } from 'react-responsive-carousel';
 import 'react-responsive-carousel/lib/styles/carousel.min.css';
 import FlashSalesTimer from '../components/FlashSalesTimer';
 import ProductCard from '../components/ProductCard';
+import RecentlyViewed from '../components/RecentlyViewed';
 import { Cloudinary } from '@cloudinary/url-gen';
 import { fill } from '@cloudinary/url-gen/actions/resize';
 
@@ -134,7 +135,9 @@ const Home = () => {
         <ul className="hidden md:flex flex-col text-sm font-medium text-gray-700 space-y-4">
           {categories.map(cat => (
             <li key={cat} className="hover:text-red-500 cursor-pointer flex justify-between items-center">
-              {cat}
+              <Link to={`/category/${encodeURIComponent(cat)}`} className="flex-grow">
+                {cat}
+              </Link>
               {cat.includes('Fashion') && <span className="text-gray-400">›</span>}
             </li>
           ))}
@@ -188,7 +191,11 @@ const Home = () => {
           ))}
         </div>
         <div className="text-center mt-8">
-          <Link to="/products" className="inline-block border px-8 py-2 text-sm rounded text-red-500 border-red-500 hover:bg-red-500 hover:text-white font-medium transition duration-300">
+          <Link 
+            to="/products" 
+            className="inline-block border px-8 py-2 text-sm rounded text-red-500 border-red-500 hover:bg-red-500 hover:text-white font-medium transition duration-300"
+            onClick={() => window.scrollTo(0, 0)}
+          >
             View All Products
           </Link>
         </div>
@@ -370,6 +377,9 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      {/* Recently Viewed Section */}
+      <RecentlyViewed />
 
       {/* Feature Cards */}
       <section className="mt-16 mb-10 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
