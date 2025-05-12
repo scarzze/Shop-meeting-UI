@@ -3,5 +3,5 @@ services:
     name: shop-meeting-api
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn wsgi:app
+    startCommand: ./run.sh
     rootDir: server
