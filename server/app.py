@@ -54,9 +54,9 @@ CORS(app,
 # Initialize Socket.IO with the same allowed origins as CORS
 # Use '*' for development to avoid CORS issues with Socket.IO
 if os.getenv('FLASK_ENV') == 'production':
-    socketio = SocketIO(app, cors_allowed_origins=allowed_origins, supports_credentials=True)
+    socketio = SocketIO(app, cors_allowed_origins=allowed_origins, supports_credentials=True, async_mode='threading')
 else:
-    socketio = SocketIO(app, cors_allowed_origins="*", supports_credentials=True)
+    socketio = SocketIO(app, cors_allowed_origins="*", supports_credentials=True, async_mode='threading')
 
 # Socket.IO event handlers
 @socketio.on('connect')
@@ -941,4 +941,10 @@ def get_tickets():
 if __name__ == '__main__':
     # Use production settings when deployed, development settings locally
     debug_mode = os.getenv('FLASK_ENV') == 'development'
-    socketio.run(app, debug=debug_mode)
+    # In development, use socketio.run
+    # In production with Gunicorn, the application will be served by Gunicorn itself
+    if debug_mode:
+        socketio.run(app, debug=debug_mode)
+    else:
+        # For production with standard Gunicorn workers
+        app.run(debug=False)
