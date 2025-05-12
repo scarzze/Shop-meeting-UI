@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
 import ProductCard from '../components/ProductCard';
+import API_URL from '../utils/apiConfig';
 
 const CategoryProducts = () => {
   const { category } = useParams();
@@ -15,7 +16,7 @@ const CategoryProducts = () => {
     const fetchProductsByCategory = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`http://localhost:5000/products/category/${category}`);
+        const response = await fetch(`${API_URL}/products/category/${category}`);
         
         if (!response.ok) {
           throw new Error(`Error fetching products: ${response.statusText}`);

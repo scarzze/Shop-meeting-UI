@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
+import API_URL from '../utils/apiConfig';
 
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
@@ -20,7 +21,7 @@ const SearchResults = () => {
 
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:5000/products');
+        const response = await fetch(`${API_URL}/products`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch products');

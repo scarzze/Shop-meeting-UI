@@ -3,8 +3,9 @@ import { io } from 'socket.io-client';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPhoneAlt, faEnvelope } from '@fortawesome/free-solid-svg-icons';
 import { Link } from 'react-router-dom';
+import API_URL from '../utils/apiConfig';
 
-const socket = io('http://localhost:5000', {
+const socket = io(API_URL, {
   transports: ['websocket', 'polling'],
   withCredentials: true,
   auth: {

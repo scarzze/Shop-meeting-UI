@@ -1,9 +1,10 @@
 import React, { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
+import { AuthContext } from '../context/AuthContext';
+import API_URL from '../utils/apiConfig';
 import { CartContext } from '../context/CartContext';
 import { validateUsername, validatePassword, isValidEmail } from '../utils/validation';
-import axios from 'axios';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -86,7 +87,7 @@ const Register = () => {
 
     try {
       // Register the user
-      const response = await axios.post('http://localhost:5000/register', data);
+      const response = await axios.post(`${API_URL}/register`, data);
       setNotification({ message: 'Registration successful! Logging you in...', type: 'success' });
       
       // Automatically log in the user after successful registration

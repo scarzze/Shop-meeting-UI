@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import API_URL from '../utils/apiConfig';
 import { FaGamepad } from 'react-icons/fa';
 import { FiTruck, FiHeadphones, FiShield, FiPhone, FiMonitor, FiWatch, FiCamera } from 'react-icons/fi';
 import { HiOutlineArrowLeft, HiOutlineArrowRight } from 'react-icons/hi';
@@ -77,7 +78,7 @@ const Home = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch('http://localhost:5000/products'); 
+        const response = await fetch(`${API_URL}/products`); 
         if (!response.ok) {
           throw new Error('Failed to fetch products');
         }

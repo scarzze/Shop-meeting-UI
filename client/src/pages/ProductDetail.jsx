@@ -9,6 +9,7 @@ import { AuthContext } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
 import { WishlistContext } from '../context/WishlistContext';
 import { addToRecentlyViewed, getRecentlyViewed } from '../utils/localStorageService';
+import API_URL from '../utils/apiConfig';
 
 const cld = new Cloudinary({
   cloud: {
@@ -72,7 +73,7 @@ const ProductDetail = () => {
       
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:5000/products/${id}`);
+        const response = await fetch(`${API_URL}/products/${id}`);
         
         if (!response.ok) {
           throw new Error('Product not found');
@@ -137,7 +138,7 @@ const ProductDetail = () => {
       }
       
       try {
-        const response = await fetch('http://localhost:5000/products');
+        const response = await fetch(`${API_URL}/products`);
         const allProducts = await response.json();
         
         if (!isMounted.current) return;
@@ -166,7 +167,7 @@ const ProductDetail = () => {
       
       try {
         setReviewsLoading(true);
-        const response = await fetch(`http://localhost:5000/products/${productId}/reviews`);
+        const response = await fetch(`${API_URL}/products/${productId}/reviews`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch reviews');
