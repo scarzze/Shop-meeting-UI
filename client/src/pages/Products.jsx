@@ -31,10 +31,31 @@ const Products = () => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${API_URL}/products`);
+        
+        // First check if the API is available
+        const apiResponse = await fetch(`${API_URL}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        });
+        
+        if (!apiResponse.ok) {
+          throw new Error(`API server is not responding correctly. Status: ${apiResponse.status}`);
+        }
+        
+        // Now fetch the products
+        const response = await fetch(`${API_URL}/products`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        });
         
         if (!response.ok) {
-          throw new Error('Failed to fetch products');
+          throw new Error(`Failed to fetch products. Status: ${response.status}`);
         }
         
         const data = await response.json();
@@ -54,7 +75,7 @@ const Products = () => {
         setLoading(false);
       } catch (error) {
         console.error('Error fetching products:', error);
-        setError('Failed to load products. Please try again later.');
+        setError(`Failed to load products: ${error.message}. API URL: ${API_URL}`);
         setLoading(false);
       }
     };
