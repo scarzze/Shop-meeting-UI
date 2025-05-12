@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { AuthContext } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import API_URL from '../utils/apiConfig';
 import { CartContext } from '../context/CartContext';
 import { validateUsername, validatePassword, isValidEmail } from '../utils/validation';
