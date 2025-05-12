@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: shop-meeting-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: ./run.sh
+    rootDir: server
+
+  - type: web
+    name: shop-meeting-ui
+    env: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm run preview
+    rootDir: client
+    envVars:
+      - key: VITE_API_URL
+        value: https://shop-meeting-ui-server.onrender.com
