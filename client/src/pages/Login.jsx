@@ -1,14 +1,13 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
 import { validateUsername, validatePassword } from '../utils/validation';
-import axios from 'axios';
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const { fetchCartItems } = useContext(CartContext);
   const [notification, setNotification] = useState({ message: '', type: '' });
   const [formErrors, setFormErrors] = useState({});
@@ -19,6 +18,13 @@ const Login = () => {
   
   // Get the path the user was trying to access before being redirected to login
   const from = location.state?.from?.pathname || '/';
+  
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (isAuthenticated() && user) {
+      navigate(from);
+    }
+  }, [isAuthenticated, user, navigate, from]);
 
   const handleGoogleLogin = () => {
     // TODO: Implement actual Google authentication
@@ -71,22 +77,33 @@ const Login = () => {
     }
     
     try {
+      setNotification({ message: 'Logging in...', type: 'info' });
       const result = await login(formData.username, formData.password);
       
       if (result.success) {
         setNotification({ message: 'Login successful', type: 'success' });
         
-        // Fetch cart items to trigger the cart synchronization
-        // The CartContext useEffect will handle merging localStorage cart with server cart
-        await fetchCartItems();
-        
-        // Navigate to the page the user was trying to access, or home if none
-        setTimeout(() => navigate(from), 1000);
+        try {
+          // Fetch cart items to trigger the cart synchronization
+          // Fetch cart items to trigger the cart synchronization
+          await fetchCartItems();
+          
+          // Navigate to the page the user was trying to access, or home if none
+          setTimeout(() => navigate(from), 1000);
+        } catch (cartError) {
+          console.error('Error fetching cart items:', cartError);
+          // Still navigate even if cart fetch fails
+          setTimeout(() => navigate(from), 1000);
+        }
       } else {
-        setNotification({ message: result.error || 'Login failed', type: 'error' });
+        setNotification({ message: result.error || 'Login failed. Please check your credentials.', type: 'error' });
       }
     } catch (error) {
-      setNotification({ message: error.message || 'Login failed', type: 'error' });
+      console.error('Login error:', error);
+      setNotification({ 
+        message: error.response?.data?.error || error.message || 'Login failed. Please try again later.', 
+        type: 'error' 
+      });
     }
   };
   // Email verification resend function removed
@@ -96,7 +113,10 @@ const Login = () => {
       {notification.message && (
         <div
           className={`notification ${notification.type} p-4 mb-4 text-center rounded-md shadow-md ${
-            notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            notification.type === 'success' ? 'bg-green-100 text-green-800' : 
+            notification.type === 'info' ? 'bg-blue-100 text-blue-800' : 
+            notification.type === 'warning' ? 'bg-yellow-100 text-yellow-800' : 
+            'bg-red-100 text-red-800'
           }`}
         >
           {notification.message}

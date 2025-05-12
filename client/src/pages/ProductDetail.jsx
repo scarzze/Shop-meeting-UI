@@ -223,19 +223,55 @@ const ProductDetail = () => {
     }
   };
 
-  const toggleWishlist = async () => {
+  const toggleWishlist = () => {
     try {
-      if (isWishlisted) {
-        // Remove from wishlist
-        await removeFromWishlist(product.id);
-        setIsWishlisted(false);
-      } else {
+      // Optimistic UI update - update UI immediately
+      const newWishlistState = !isWishlisted;
+      setIsWishlisted(newWishlistState);
+      
+      // Show notification
+      setNotification({
+        message: newWishlistState 
+          ? `${product.name} added to wishlist` 
+          : `${product.name} removed from wishlist`,
+        type: 'success'
+      });
+      
+      // Clear notification after 3 seconds
+      setTimeout(() => setNotification({ message: '', type: '' }), 3000);
+      
+      // Perform the actual API call in the background
+      if (newWishlistState) {
         // Add to wishlist
-        await addToWishlist(product.id, product);
-        setIsWishlisted(true);
+        addToWishlist(product.id, product)
+          .catch(error => {
+            console.error('Error adding to wishlist:', error);
+            // Revert UI on error
+            setIsWishlisted(false);
+            setNotification({
+              message: 'Failed to add to wishlist',
+              type: 'error'
+            });
+          });
+      } else {
+        // Remove from wishlist
+        removeFromWishlist(product.id)
+          .catch(error => {
+            console.error('Error removing from wishlist:', error);
+            // Revert UI on error
+            setIsWishlisted(true);
+            setNotification({
+              message: 'Failed to remove from wishlist',
+              type: 'error'
+            });
+          });
       }
     } catch (error) {
-      console.error('Error updating wishlist:', error);
+      console.error('Error updating wishlist UI:', error);
+      setNotification({
+        message: 'An error occurred',
+        type: 'error'
+      });
     }
   };
 

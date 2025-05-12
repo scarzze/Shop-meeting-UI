@@ -1,12 +1,14 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import FloatingContactButton from './components/contact';
+import ScrollToTop from './components/ScrollToTop';
+import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import ProtectedRoute from './components/ProtectedRoute';
 import Profile from './pages/Profile';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
 import ProductDetail from './pages/ProductDetail';
 import Checkout from './pages/Checkout';
 import Cart from './pages/Cart';
@@ -16,10 +18,8 @@ import Wishlist from './pages/Wishlist';
 import Contact from './pages/Contact';
 import Products from './pages/Products';
 import CategoryProducts from './pages/CategoryProducts';
-import FloatingContactButton from './components/contact';
 import FaqPage from './pages/FaqPage';
 import SearchResults from './pages/SearchResults';
-import ScrollToTop from './components/ScrollToTop';
 
 
 const App = () => {

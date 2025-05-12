@@ -55,14 +55,14 @@ const Cart = () => {
   // Handle cart item removal with error handling
   const handleRemoveItem = async (itemId) => {
     try {
+      // We don't need to call fetchCartItems after removeFromCart
+      // because removeFromCart already updates the cart state
       await removeFromCart(itemId);
-      // Refresh cart items after successful removal
-      await fetchCartItems();
       setNotification({ message: 'Item removed successfully', type: 'success' });
       setTimeout(() => setNotification({ message: '', type: '' }), 3000);
     } catch (error) {
       console.error('Error removing item:', error);
-      if (error.message.includes('Authentication required')) {
+      if (error.message && error.message.includes('Authentication required')) {
         setNotification({ message: 'Please log in to manage your cart', type: 'error' });
         setTimeout(() => navigate('/login', { state: { from: '/cart' } }), 2000);
       } else {
@@ -76,7 +76,10 @@ const Cart = () => {
     <div className="p-4 md:p-10 relative">  
       {/* Notification */}
       {notification.message && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded shadow-lg ${notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded shadow-lg ${notification.type === 'success' ? 'bg-green-100 text-green-800' : 
+        notification.type === 'info' ? 'bg-blue-100 text-blue-800' : 
+        notification.type === 'warning' ? 'bg-yellow-100 text-yellow-800' : 
+        'bg-red-100 text-red-800'}`}>
           {notification.message}
         </div>
       )}

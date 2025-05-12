@@ -14,8 +14,10 @@ const CartProvider = ({ children }) => {
   // Calculate cart total
   const calculateTotal = useCallback((items) => {
     const total = items.reduce((sum, item) => {
-      const price = parseFloat(item.price);
-      const quantity = parseInt(item.quantity, 10);
+      // Ensure price is a number by using parseFloat and handling NaN
+      const price = parseFloat(item.price) || 0;
+      // Ensure quantity is a number by using parseInt and handling NaN
+      const quantity = parseInt(item.quantity, 10) || 0;
       return sum + (price * quantity);
     }, 0);
     setCartTotal(total);
@@ -124,7 +126,7 @@ const CartProvider = ({ children }) => {
     }
   };
 
-  // Add to cart with optimistic update
+  // Add to cart with optimistic update and debouncing
   const addToCart = async (productId, quantity = 1, productDetails = null) => {
     if (!isAuthenticated()) {
       // Add to local storage cart
@@ -318,7 +320,7 @@ const CartProvider = ({ children }) => {
       if (refreshInterval) clearInterval(refreshInterval);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, calculateTotal]);
+  }, [isAuthenticated]); // Removed fetchCartItems from dependency array to prevent infinite loop
   
   // Sync cart with local storage when authenticated state changes
   useEffect(() => {
@@ -328,20 +330,30 @@ const CartProvider = ({ children }) => {
         const localCart = loadCartFromLocalStorage();
         
         if (localCart.length > 0) {
+          // Use a debounced approach to prevent multiple rapid updates
+          const syncPromises = [];
+          
           // For each item in local cart, add to server cart
           for (const item of localCart) {
             try {
-              await addToCart(item.product_id || item.id, item.quantity);
+              // Collect all promises but don't await them individually
+              syncPromises.push(
+                addToCart(item.product_id || item.id, item.quantity)
+                  .catch(error => console.error('Error syncing local cart item to server:', error))
+              );
             } catch (error) {
-              console.error('Error syncing local cart item to server:', error);
+              console.error('Error preparing to sync cart item:', error);
             }
           }
+          
+          // Wait for all sync operations to complete
+          await Promise.allSettled(syncPromises);
           
           // Clear local cart after syncing
           saveCartToLocalStorage([]);
           
           // Fetch the updated cart from server
-          const serverCart = await fetchCartItems();
+          const serverCart = await fetchCartItems(true); // Force refresh
           setCartItems(serverCart);
           calculateTotal(serverCart);
         }

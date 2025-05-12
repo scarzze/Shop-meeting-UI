@@ -1,15 +1,25 @@
-import React, { useState, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import React, { useState, useContext, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import API_URL from '../utils/apiConfig';
 import { CartContext } from '../context/CartContext';
 import { validateUsername, validatePassword, isValidEmail } from '../utils/validation';
+import api from '../utils/axiosConfig';
 
 const Register = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const location = useLocation();
+  const { login, isAuthenticated, user } = useAuth();
   const { fetchCartItems } = useContext(CartContext);
+  
+  // Get the path the user was trying to access before being redirected to register
+  const from = location.state?.from?.pathname || '/';
+  
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (isAuthenticated() && user) {
+      navigate(from);
+    }
+  }, [isAuthenticated, user, navigate, from]);
   const [notification, setNotification] = useState({ message: '', type: '' });
   const [formErrors, setFormErrors] = useState({});
   const [formData, setFormData] = useState({
@@ -86,8 +96,10 @@ const Register = () => {
     };
 
     try {
+      setNotification({ message: 'Creating your account...', type: 'info' });
+      
       // Register the user
-      const response = await axios.post(`${API_URL}/register`, data);
+      const response = await api.post('/register', data);
       setNotification({ message: 'Registration successful! Logging you in...', type: 'success' });
       
       // Automatically log in the user after successful registration
@@ -95,26 +107,39 @@ const Register = () => {
         const loginResult = await login(data.username, data.password);
         
         if (loginResult.success) {
-          // Fetch cart items to trigger the cart synchronization
-          // The CartContext useEffect will handle merging localStorage cart with server cart
-          await fetchCartItems();
-          
-          // Navigate to home page
-          setTimeout(() => navigate('/'), 1000);
+          try {
+            // Fetch cart items to trigger the cart synchronization
+            await fetchCartItems();
+            
+            // Navigate to home page
+            setTimeout(() => navigate('/'), 1000);
+          } catch (cartError) {
+            console.error('Error fetching cart items:', cartError);
+            // Still navigate even if cart fetch fails
+            setTimeout(() => navigate('/'), 1000);
+          }
         } else {
+          console.error('Auto-login failed after registration:', loginResult.error);
           // If login fails, redirect to login page
-          setTimeout(() => navigate('/login'), 1000);
+          setNotification({ message: 'Account created but automatic login failed. Please log in manually.', type: 'warning' });
+          setTimeout(() => navigate('/login'), 1500);
         }
       } catch (loginError) {
         console.error('Auto-login failed after registration:', loginError);
         // If auto-login fails, redirect to login page
-        setTimeout(() => navigate('/login'), 1000);
+        setNotification({ message: 'Account created but automatic login failed. Please log in manually.', type: 'warning' });
+        setTimeout(() => navigate('/login'), 1500);
       }
     } catch (error) {
+      console.error('Registration error:', error);
       if (error.response?.status === 409) { // Conflict status code for existing user
         setNotification({ message: 'User already exists. Please log in.', type: 'error' });
+        setTimeout(() => navigate('/login'), 2000);
       } else {
-        setNotification({ message: error.response?.data?.error || 'Registration failed', type: 'error' });
+        setNotification({ 
+          message: error.response?.data?.error || 'Registration failed. Please try again.', 
+          type: 'error' 
+        });
       }
     }
   };
@@ -124,7 +149,10 @@ const Register = () => {
       {notification.message && (
         <div
           className={`notification ${notification.type} p-4 mb-4 text-center rounded-md shadow-md ${
-            notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            notification.type === 'success' ? 'bg-green-100 text-green-800' : 
+            notification.type === 'info' ? 'bg-blue-100 text-blue-800' : 
+            notification.type === 'warning' ? 'bg-yellow-100 text-yellow-800' : 
+            'bg-red-100 text-red-800'
           }`}
         >
           {notification.message}
