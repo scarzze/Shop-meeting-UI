@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
-import { FaHeart, FaRegHeart } from 'react-icons/fa';
+import { FaHeart, FaRegHeart, FaShoppingCart } from 'react-icons/fa';
 import { Cloudinary } from '@cloudinary/url-gen';
 import { fill } from '@cloudinary/url-gen/actions/resize';
 import axios from 'axios';
@@ -32,7 +32,7 @@ const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useContext(AuthContext);
-  const { addToCart } = useContext(CartContext);
+  const { addToCart, isInCart } = useContext(CartContext);
   const { addToWishlist, removeFromWishlist, isInWishlist } = useContext(WishlistContext);
   const [product, setProduct] = useState(null);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
@@ -42,9 +42,34 @@ const ProductDetail = () => {
   const [error, setError] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
+  const [notification, setNotification] = useState({ message: '', type: '' });
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+
+  // Use a ref to track if the component is mounted
+  const isMounted = React.useRef(true);
+  
+  // Cache for related products to avoid redundant API calls
+  const [relatedProductsCache, setRelatedProductsCache] = useState({
+    data: null,
+    timestamp: null,
+    expiryTime: 5 * 60 * 1000 // 5 minutes cache validity
+  });
+
+  useEffect(() => {
+    // Set isMounted to true when the component mounts
+    isMounted.current = true;
+    
+    // Clean up function to set isMounted to false when the component unmounts
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const fetchProduct = async () => {
+      if (!isMounted.current) return;
+      
       try {
         setLoading(true);
         const response = await fetch(`http://localhost:5000/products/${id}`);
@@ -55,15 +80,20 @@ const ProductDetail = () => {
         
         const data = await response.json();
 
+        if (!isMounted.current) return;
+
         // Ensure product has an images array
         const updatedImages = data.image_url ? [data.image_url] : ['/images/placeholder.png'];
         data.images = updatedImages;
         
-        // Set default rating and reviews if not provided
+        // Set default rating and reviews count if not provided
         if (!data.rating) data.rating = 4;
         if (!data.reviews) data.reviews = 0;
         
         setProduct(data);
+        
+        // Check if product is in cart
+        setInCart(isInCart(data.id));
         
         // Add to recently viewed
         addToRecentlyViewed(data);
@@ -78,34 +108,91 @@ const ProductDetail = () => {
           setIsWishlisted(isInWishlist(data.id));
         }
         
-        // Fetch related products
+        // Fetch related products (only if needed)
         fetchRelatedProducts(data.category);
+        
+        // Fetch reviews for this product
+        fetchReviews(data.id);
       } catch (error) {
+        if (!isMounted.current) return;
         console.error('Error fetching product details:', error);
         setError(error.message);
       } finally {
-        setLoading(false);
+        if (isMounted.current) {
+          setLoading(false);
+        }
       }
     };
 
     const fetchRelatedProducts = async (category) => {
+      if (!isMounted.current) return;
+      
+      // Return cached data if available and not expired
+      const now = Date.now();
+      if (relatedProductsCache.data && 
+          relatedProductsCache.timestamp && 
+          (now - relatedProductsCache.timestamp < relatedProductsCache.expiryTime)) {
+        console.log('Using cached related products');
+        return;
+      }
+      
       try {
         const response = await fetch('http://localhost:5000/products');
         const allProducts = await response.json();
+        
+        if (!isMounted.current) return;
         
         // Filter products by category and exclude current product
         const related = allProducts
           .filter(p => p.id !== parseInt(id))
           .slice(0, 4); // Limit to 4 related products
-          
+        
+        // Update cache
+        setRelatedProductsCache({
+          data: related,
+          timestamp: now,
+          expiryTime: 5 * 60 * 1000
+        });
+        
         setRelatedProducts(related);
       } catch (error) {
+        if (!isMounted.current) return;
         console.error('Error fetching related products:', error);
+      }
+    };
+    
+    const fetchReviews = async (productId) => {
+      if (!isMounted.current) return;
+      
+      try {
+        setReviewsLoading(true);
+        const response = await fetch(`http://localhost:5000/products/${productId}/reviews`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch reviews');
+        }
+        
+        const data = await response.json();
+        
+        if (!isMounted.current) return;
+        
+        setReviews(data);
+        setReviewsLoading(false);
+      } catch (error) {
+        if (!isMounted.current) return;
+        console.error('Error fetching reviews:', error);
+        setReviewsLoading(false);
       }
     };
 
     fetchProduct();
-  }, [id, isInWishlist]);
+    
+    // Cleanup function
+    return () => {
+      // This will be called when the component unmounts or when dependencies change
+      // We already set isMounted.current = false in the other useEffect
+    };
+  }, [id, isInCart, isInWishlist]); // Added isInCart to dependencies
 
   const handleQuantityChange = (change) => {
     const newQuantity = selectedQuantity + change;
@@ -119,9 +206,19 @@ const ProductDetail = () => {
       // Use the CartContext addToCart function which handles both authenticated and unauthenticated users
       await addToCart(product.id, selectedQuantity, product);
       setInCart(true);
-      setTimeout(() => navigate('/cart'), 1000); // Redirect to cart after 1 second
+      // Show success notification instead of redirecting
+      setNotification({ 
+        message: `${product.name} (${selectedQuantity}) added to cart successfully!`, 
+        type: 'success' 
+      });
+      setTimeout(() => setNotification({ message: '', type: '' }), 3000);
     } catch (error) {
       console.error('Error adding to cart:', error);
+      setNotification({ 
+        message: error.message || 'Failed to add item to cart', 
+        type: 'error' 
+      });
+      setTimeout(() => setNotification({ message: '', type: '' }), 3000);
     }
   };
 
@@ -169,7 +266,13 @@ const ProductDetail = () => {
   }
 
   return (
-    <div className="p-4 md:p-10">
+    <div className="p-4 md:p-10 relative">
+      {/* Notification */}
+      {notification.message && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded shadow-lg ${notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {notification.message}
+        </div>
+      )}
       {/* Breadcrumb */}
       <div className="text-sm text-gray-500 mb-4">
         <span className="text-gray-700 cursor-pointer" onClick={() => navigate('/')}>Home</span> / 
@@ -219,11 +322,23 @@ const ProductDetail = () => {
           
           <div className="text-yellow-400 text-sm mb-2">
             {'★'.repeat(Math.round(product.rating || 0))}
-            <span className="text-gray-500 ml-1">({product.reviews || 0} Reviews)</span>
+            <span className="text-gray-500 ml-1">({reviews.length || 0} Reviews)</span>
           </div>
           
-          <div className="text-lg font-bold text-gray-800 mb-2">
-            KES{product.price?.toFixed(2) || '0.00'}
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-lg font-bold text-red-500">
+              KES{product.price?.toFixed(2) || '0.00'}
+            </span>
+            {product.oldPrice && (
+              <span className="line-through text-gray-500">
+                KES{product.oldPrice?.toFixed(2)}
+              </span>
+            )}
+            {product.oldPrice && (
+              <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded">
+                {Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)}% OFF
+              </span>
+            )}
           </div>
           
           <p className="text-gray-600 mb-4">{product.description || 'No description available'}</p>
@@ -297,6 +412,37 @@ const ProductDetail = () => {
           </div>
         </div>
       )}
+      
+      {/* Product Reviews */}
+      <div className="mt-16">
+        <h2 className="text-2xl font-bold mb-6">Product Reviews ({reviews.length})</h2>
+        {reviewsLoading ? (
+          <div className="flex justify-center items-center h-24">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
+          </div>
+        ) : reviews.length > 0 ? (
+          <div className="space-y-6">
+            {reviews.map((review, index) => (
+              <div key={index} className="border p-4 rounded-lg">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h3 className="font-medium">{review.username}</h3>
+                    <div className="text-yellow-400 text-sm">
+                      {'★'.repeat(review.rating)}
+                    </div>
+                  </div>
+                  <span className="text-gray-500 text-sm">
+                    {new Date(review.date).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-gray-700">{review.review}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500">No reviews yet for this product.</p>
+        )}
+      </div>
       
       {/* Related Products */}
       <div className="mt-16">

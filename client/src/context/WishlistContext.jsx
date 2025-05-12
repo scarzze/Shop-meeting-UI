@@ -117,6 +117,10 @@ const WishlistProvider = ({ children }) => {
       const updatedWishlist = [...localWishlist, newItem];
       saveWishlistToLocalStorage(updatedWishlist);
       setWishlistItems(updatedWishlist);
+      
+      // Refresh recommendations after adding to wishlist
+      fetchRecommendedItems(true);
+      
       return { success: true, wishlist: updatedWishlist };
     }
     
@@ -142,6 +146,9 @@ const WishlistProvider = ({ children }) => {
         await fetchWishlistItems(true);
       }
       
+      // Refresh recommendations after adding to wishlist
+      fetchRecommendedItems(true);
+      
       return { success: true, wishlist: response.data };
     } catch (error) {
       console.error('Error adding to wishlist:', error);
@@ -161,32 +168,38 @@ const WishlistProvider = ({ children }) => {
       
       saveWishlistToLocalStorage(updatedWishlist);
       setWishlistItems(updatedWishlist);
+      
+      // Refresh recommendations after removing from wishlist
+      fetchRecommendedItems(true);
+      
       return { success: true, wishlist: updatedWishlist };
     }
     
     try {
-      // Optimistic update - remove item from state immediately before API call
+      await api.delete(`/wishlist/${productId}`);
+      
+      // Optimistic update to avoid full refresh
       if (wishlistCache.data) {
         const updatedCache = wishlistCache.data.filter(item => 
           item.product_id !== productId && item.id !== productId
         );
-        
         setWishlistCache({
           ...wishlistCache,
           data: updatedCache,
           timestamp: Date.now()
         });
-        
         setWishlistItems(updatedCache);
+      } else {
+        await fetchWishlistItems(true);
       }
       
-      const response = await api.delete(`/wishlist/${productId}`);
+      // Refresh recommendations after removing from wishlist
+      fetchRecommendedItems(true);
+      
       return { success: true };
     } catch (error) {
       console.error('Error removing from wishlist:', error);
       setError('Failed to remove item from wishlist');
-      // Revert optimistic update on error by refreshing
-      await fetchWishlistItems(true);
       return { success: false, error: 'Failed to remove item from wishlist' };
     }
   };
@@ -332,7 +345,7 @@ const WishlistProvider = ({ children }) => {
   const [recommendedCache, setRecommendedCache] = useState({
     data: null,
     timestamp: null,
-    expiryTime: 5 * 60 * 1000 // 5 minutes cache validity
+    expiryTime: 2 * 60 * 1000 // 2 minutes cache validity - shorter to get fresh recommendations
   });
 
   // Fetch recommended products based on user's wishlist and browsing history
@@ -349,42 +362,23 @@ const WishlistProvider = ({ children }) => {
     }
     
     setRecommendedLoading(true);
+    setRecommendedError(null);
+    
     try {
-      // In a real application, this would be an API call to get personalized recommendations
-      // For now, we'll simulate it by fetching some products from the server
-      const response = await api.get('/products?limit=4');
+      // Fetch personalized recommendations from the server
+      const response = await api.get('/recommendations?limit=8');
       const data = response.data;
-      
-      // Add some visual indicators like discount or "new" tag to make it more interesting
-      const enhancedData = data.map((product, index) => {
-        // Add random discount to first product
-        if (index === 0) {
-          return {
-            ...product,
-            discount: '-' + (Math.floor(Math.random() * 30) + 10) + '%',
-            oldPrice: Math.round(product.price * (1 + (Math.random() * 0.5)))
-          };
-        }
-        // Add "new" tag to third product
-        else if (index === 2) {
-          return {
-            ...product,
-            isNew: true
-          };
-        }
-        return product;
-      });
       
       // Update cache
       setRecommendedCache({
-        data: enhancedData,
+        data: data,
         timestamp: now,
-        expiryTime: 5 * 60 * 1000
+        expiryTime: 2 * 60 * 1000 // 2 minutes cache validity
       });
       
-      setRecommendedItems(enhancedData);
+      setRecommendedItems(data);
       setRecommendedLoading(false);
-      return enhancedData;
+      return data;
     } catch (error) {
       console.error('Error fetching recommended items:', error);
       setRecommendedError('Failed to fetch recommended items');
@@ -399,30 +393,30 @@ const WishlistProvider = ({ children }) => {
           oldPrice: 11600,
           discount: '-35%',
           rating: 5,
-          image: '/images/laptop.png'
+          image_url: '/images/laptop.jpg'
         },
         {
           id: 2,
-          name: 'IPS LCD Gaming Monitor',
-          price: 11600,
-          rating: 5,
-          image: '/images/monitor.png'
+          name: 'Wireless Bluetooth Headphones',
+          price: 1200,
+          rating: 4,
+          image_url: '/images/headphones.jpg'
         },
         {
           id: 3,
-          name: 'HAVIT HV-G92 Gamepad',
-          price: 5600,
+          name: 'Smart Watch Series 7',
+          price: 3200,
           isNew: true,
-          rating: 5,
-          image: '/images/red-gamepad.png'
+          rating: 4,
+          image_url: '/images/smartwatch.jpg'
         },
         {
           id: 4,
-          name: 'AK-900 Wired Keyboard',
-          price: 2000,
+          name: 'Smartphone 13 Pro',
+          price: 8500,
           rating: 5,
-          image: '/images/keyboard.png'
-        },
+          image_url: '/images/smartphone.jpg'
+        }
       ];
       
       setRecommendedItems(fallbackItems);

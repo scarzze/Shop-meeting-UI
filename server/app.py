@@ -14,8 +14,6 @@ from models import db, bcrypt, User, Product, Cart, CartItem, Order, OrderItem, 
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Flask-Mail configuration removed
-
 # Set token expiration times
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
@@ -28,10 +26,23 @@ Migrate(app, db)
 jwt = JWTManager(app)
 
 # Configure CORS with specific settings
+# Get frontend URL from environment variable or use a default list of allowed origins
+frontend_url = os.getenv('FRONTEND_URL')
+
+# Remove trailing slash if present in the frontend URL
+if frontend_url and frontend_url.endswith('/'):
+    frontend_url = frontend_url[:-1]
+
+allowed_origins = ["http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:3000"]
+
+# Add frontend URL if it exists
+if frontend_url and frontend_url not in allowed_origins:
+    allowed_origins.append(frontend_url)
+
 CORS(app, 
      resources={r"/*": {
-         "origins": ["http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:3000"],
-         "methods": ["GET", "POST", "DELETE"],
+         "origins": allowed_origins,
+         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Added all common methods
          "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
          "supports_credentials": True,
          "expose_headers": ["Authorization"]
@@ -40,8 +51,12 @@ CORS(app,
      allow_credentials=True
 )
 
-# Initialize Socket.IO
-socketio = SocketIO(app, cors_allowed_origins=["http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:3000"], supports_credentials=True)
+# Initialize Socket.IO with the same allowed origins as CORS
+# Use '*' for development to avoid CORS issues with Socket.IO
+if os.getenv('FLASK_ENV') == 'production':
+    socketio = SocketIO(app, cors_allowed_origins=allowed_origins, supports_credentials=True)
+else:
+    socketio = SocketIO(app, cors_allowed_origins="*", supports_credentials=True)
 
 # Socket.IO event handlers
 @socketio.on('connect')
@@ -104,7 +119,6 @@ def log_request_info():
 def index():
     return {'message': 'Welcome to Shop Meeting API'}
 
-# Email verification functionality removed
 
 # User Registration
 @app.route('/register', methods=['POST'])
@@ -476,6 +490,7 @@ def get_products():
         'name': p.name,
         'description': p.description,
         'price': p.price,
+        'oldPrice': p.oldPrice,
         'stock': p.stock,
         'image_url': p.image_url,
         'category': p.category  # Include category in the response
@@ -494,6 +509,7 @@ def get_products_by_category(category):
         'name': p.name,
         'description': p.description,
         'price': p.price,
+        'oldPrice': p.oldPrice,
         'stock': p.stock,
         'image_url': p.image_url,
         'category': p.category
@@ -508,6 +524,7 @@ def get_product(product_id):
         'name': product.name,
         'description': product.description,
         'price': product.price,
+        'oldPrice': product.oldPrice,
         'stock': product.stock,
         'image_url': product.image_url
     }
@@ -802,6 +819,93 @@ def get_reviews(product_id):
         'date': r.created_at.isoformat()
     } for r in reviews])
 
+
+# Get personalized recommendations
+@app.route('/recommendations', methods=['GET'])
+def get_recommendations():
+    # Make JWT optional manually since @jwt_required(optional=True) might be causing issues
+    current_user_id = None
+    try:
+        current_user_id = get_jwt_identity()
+    except Exception:
+        # If no valid token, proceed as unauthenticated user
+        pass
+    limit = request.args.get('limit', 8, type=int)
+    
+    # If user is logged in, provide personalized recommendations
+    if current_user_id:
+        # Get user's favorite categories based on their favorites
+        user_favorites = Favorite.query.filter_by(user_id=current_user_id).all()
+        
+        if user_favorites:
+            # Extract product IDs from favorites
+            favorite_product_ids = [fav.product_id for fav in user_favorites]
+            
+            # Get categories of favorite products
+            favorite_products = Product.query.filter(Product.id.in_(favorite_product_ids)).all()
+            favorite_categories = set(product.category for product in favorite_products)
+            
+            # Get products from the same categories, excluding already favorited ones
+            recommended_products = Product.query.filter(
+                Product.category.in_(favorite_categories),
+                ~Product.id.in_(favorite_product_ids)
+            ).order_by(db.func.random()).limit(limit).all()
+            
+            # If we don't have enough recommendations, add some random products
+            if len(recommended_products) < limit:
+                additional_count = limit - len(recommended_products)
+                additional_products = Product.query.filter(
+                    ~Product.id.in_(favorite_product_ids),
+                    ~Product.id.in_([p.id for p in recommended_products])
+                ).order_by(db.func.random()).limit(additional_count).all()
+                
+                recommended_products.extend(additional_products)
+        else:
+            # If user has no favorites yet, return trending products (most ordered)
+            recommended_products = db.session.query(Product, db.func.count(OrderItem.id).label('order_count'))\
+                .join(OrderItem, Product.id == OrderItem.product_id)\
+                .group_by(Product.id)\
+                .order_by(db.desc('order_count'))\
+                .limit(limit)\
+                .all()
+            recommended_products = [p[0] for p in recommended_products]
+    else:
+        # For non-logged in users, return trending products
+        recommended_products = db.session.query(Product, db.func.count(OrderItem.id).label('order_count'))\
+            .join(OrderItem, Product.id == OrderItem.product_id)\
+            .group_by(Product.id)\
+            .order_by(db.desc('order_count'))\
+            .limit(limit)\
+            .all()
+        recommended_products = [p[0] for p in recommended_products]
+    
+    # Add some visual indicators like discount or "new" tag to make it more interesting
+    enhanced_products = []
+    for i, product in enumerate(recommended_products):
+        product_dict = {
+            'id': product.id,
+            'name': product.name,
+            'price': product.price,
+            'description': product.description,
+            'category': product.category,
+            'image_url': product.image_url,
+            'rating': product.rating
+        }
+        
+        # Add random discount to some products
+        if i % 3 == 0:
+            discount_percent = 10 + (i % 4) * 5  # Discounts of 10%, 15%, 20%, 25%
+            product_dict['discount'] = f'-{discount_percent}%'
+            product_dict['oldPrice'] = round(product.price * (1 + discount_percent/100), 2)
+        
+        # Add "new" tag to some products
+        if i % 4 == 2:
+            product_dict['isNew'] = True
+            
+        enhanced_products.append(product_dict)
+    
+    return jsonify(enhanced_products)
+
 # Submit support ticket
 @app.route('/support', methods=['POST'])
 @jwt_required()
@@ -835,4 +939,6 @@ def get_tickets():
 
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    # Use production settings when deployed, development settings locally
+    debug_mode = os.getenv('FLASK_ENV') == 'development'
+    socketio.run(app, debug=debug_mode)

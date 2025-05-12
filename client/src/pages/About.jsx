@@ -14,6 +14,7 @@ const About = () => {
     { name: "Maria Garcia", role: "UX Designer", image: "/Maria-Garcia.jpg", social: { twitter: "#", instagram: "#", linkedin: "#" } },
     { name: "James Wilson", role: "Operations Manager", image: "/James-Wilson.jpg", social: { twitter: "#", instagram: "#", linkedin: "#" } },
     { name: "Lisa Anderson", role: "Customer Success Manager", image: "/Lisa-Anderson.jpg", social: { twitter: "#", instagram: "#", linkedin: "#" } },
+    { name: "Cecil Leon", role: "QA Engineer", image: "/Cecil-Leon.jpg", social: { twitter: "#", instagram: "#", linkedin: "#" } },
   ];
 
   const stats = [

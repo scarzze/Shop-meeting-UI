@@ -86,7 +86,7 @@ const MyWishlist = () => {
                   </div>
                   
                   <h4 className="font-medium mb-1">{item.name}</h4>
-                  <div className="text-red-500 font-medium mb-3">${parseFloat(item.price).toFixed(2)}</div>
+                  <div className="text-red-500 font-medium mb-3">KES{parseFloat(item.price).toFixed(2)}</div>
                   
                   <div className="flex space-x-2">
                     <button

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { FaStar, FaRegHeart, FaEye, FaGamepad } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom';
+import { FaGamepad } from 'react-icons/fa';
 import { FiTruck, FiHeadphones, FiShield, FiPhone, FiMonitor, FiWatch, FiCamera } from 'react-icons/fi';
 import { HiOutlineArrowLeft, HiOutlineArrowRight } from 'react-icons/hi';
 import { Carousel } from 'react-responsive-carousel';
@@ -8,6 +8,7 @@ import 'react-responsive-carousel/lib/styles/carousel.min.css';
 import FlashSalesTimer from '../components/FlashSalesTimer';
 import ProductCard from '../components/ProductCard';
 import RecentlyViewed from '../components/RecentlyViewed';
+import PersonalizedRecommendations from '../components/PersonalizedRecommendations';
 import { Cloudinary } from '@cloudinary/url-gen';
 import { fill } from '@cloudinary/url-gen/actions/resize';
 
@@ -32,7 +33,6 @@ const getCloudinaryImageUrl = (publicId, width, height) => {
 const updateProductImages = (products) => {
   return products.map((product) => ({
     ...product,
-    // Add image property that points to image_url for backward compatibility
     image: product.image_url,
   }));
 };
@@ -42,6 +42,7 @@ const Home = () => {
   const [bestSelling, setBestSelling] = useState([]);
   const [exploreProducts, setExploreProducts] = useState([]);
   const [newArrivals, setNewArrivals] = useState([]);
+  const navigate = useNavigate();
 
   // Set deadline for flash sale - 3 days from now
   const flashSaleDeadline = new Date();
@@ -59,12 +60,12 @@ const Home = () => {
   ];
 
   const categoryIcons = [
-    { label: 'Phones', icon: <FiPhone className="text-3xl"/> },
-    { label: 'Computers', icon: <FiMonitor className="text-3xl"/> },
-    { label: 'SmartWatch', icon: <FiWatch className="text-3xl"/> },
-    { label: 'Camera', icon: <FiCamera className="text-3xl"/> },
-    { label: 'HeadPhones', icon: <FiHeadphones className="text-3xl"/> },
-    { label: 'Gaming', icon: <FaGamepad className="text-3xl"/> },
+    { label: 'Phones', icon: <FiPhone className="text-3xl"/>, category: "Electronics" },
+    { label: 'Computers', icon: <FiMonitor className="text-3xl"/>, category: "Electronics" },
+    { label: 'SmartWatch', icon: <FiWatch className="text-3xl"/>, category: "Electronics" },
+    { label: 'Camera', icon: <FiCamera className="text-3xl"/>, category: "Electronics" },
+    { label: 'HeadPhones', icon: <FiHeadphones className="text-3xl"/>, category: "Electronics" },
+    { label: 'Gaming', icon: <FaGamepad className="text-3xl"/>, category: "Electronics" },
   ];
 
   const audioPromotion = {
@@ -153,11 +154,12 @@ const Home = () => {
           >
             <div>
               <img src="/images/iphoneke.jpg" alt="iPhone 14 banner" className="w-full h-126 object-cover" />
-              <div className="absolute inset-0 flex flex-col justify-center px-12">
-                <h2 className="text-4xl font-bold text-white mb-4">Up to 10% off Voucher</h2>
-                <button className="bg-black text-white px-6 py-2 rounded w-32 flex items-center">
-                  Shop Now <HiOutlineArrowRight className="ml-2" />
-                </button>
+              <div className="absolute inset-0 flex flex-col justify-center px-12 bg-gradient-to-r from-black/70 to-transparent">
+                <div className="max-w-md">
+                  <span className="bg-red-500 text-white px-4 py-1 rounded-full text-sm font-medium mb-4 inline-block">Special Offer</span>
+                  <h2 className="text-5xl font-bold text-white mb-4 leading-tight">Up to <span className="text-red-500">10% off</span> Voucher</h2>
+                  <p className="text-gray-200 mb-6 text-lg">Exclusive deals on our latest products. Limited time offer.</p>
+                </div>
               </div>
             </div>
             <div><img src="/images/levitan.jpg" alt="banner"  className="w-full h-126 object-cover"/></div>
@@ -220,7 +222,16 @@ const Home = () => {
         </div>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-4 mt-6">
           {categoryIcons.map((cat, i) => (
-            <div key={i} className="flex flex-col items-center justify-center border py-6 rounded-lg hover:border-red-500 cursor-pointer hover:bg-gray-50 transition-all">
+            <div 
+              key={i} 
+              className="flex flex-col items-center justify-center border py-6 rounded-lg hover:border-red-500 cursor-pointer hover:bg-gray-50 transition-all"
+              onClick={() => {
+                navigate(`/category/${encodeURIComponent(cat.category)}`);
+                window.scrollTo(0, 0); // Scroll to top when navigating
+              }}
+              role="button"
+              aria-label={`Browse ${cat.label} category`}
+            >
               <div className="h-12 w-12 flex items-center justify-center">
                 {cat.icon}
               </div>
@@ -272,9 +283,7 @@ const Home = () => {
             <h2 className="text-xl font-bold">This Month</h2>
           </div>
           <h3 className="text-xl font-bold">Best Selling Products</h3>
-          <button className="bg-red-500 text-white px-6 py-2 rounded">
-            View All
-          </button>
+          <div className="invisible">Spacer</div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mt-6">
           {bestSelling.map((product, i) => (
@@ -320,6 +329,7 @@ const Home = () => {
             <h2 className="text-xl font-bold">Featured</h2>
           </div>
           <h3 className="text-xl font-bold">New Arrival</h3>
+          <div className="invisible">Spacer</div>
         </div>
         <div className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -378,7 +388,10 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Recently Viewed Section */}
+      {/* Personalized Recommendations */}
+      <PersonalizedRecommendations />
+      
+      {/* Recently Viewed */}
       <RecentlyViewed />
 
       {/* Feature Cards */}

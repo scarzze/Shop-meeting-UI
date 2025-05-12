@@ -50,6 +50,7 @@ class Product(db.Model):
     name = db.Column(db.String(120), nullable=False)
     description = db.Column(db.Text)
     price = db.Column(db.Float, nullable=False)
+    oldPrice = db.Column(db.Float, nullable=True)  # Added oldPrice field
     stock = db.Column(db.Integer, nullable=False)
     image_url = db.Column(db.String(255))
     category = db.Column(db.String(50), nullable=False)

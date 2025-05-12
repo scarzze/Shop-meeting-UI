@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { CartContext } from '../context/CartContext';
+import { AuthContext } from '../context/AuthContext';
 import CartItem from '../components/CartItem';
 import { FiShoppingBag, FiArrowLeft } from 'react-icons/fi';
 
@@ -16,13 +17,9 @@ const Cart = () => {
     fetchCartItems 
   } = useContext(CartContext);
   
+  const { isAuthenticated } = useContext(AuthContext);
   const [notification, setNotification] = useState({ message: '', type: '' });
   const navigate = useNavigate();
-
-  // Check if user is authenticated
-  const isAuthenticated = () => {
-    return localStorage.getItem('token') !== null;
-  };
 
   const shipping = 0; // Free shipping
   const total = cartTotal + shipping;

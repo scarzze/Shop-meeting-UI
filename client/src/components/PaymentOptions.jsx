@@ -121,11 +121,6 @@ const PaymentOptions = () => {
         return '💳 Visa';
       case 'mastercard':
         return '💳 Mastercard';
-      case 'amex':
-      case 'american express':
-        return '💳 Amex';
-      case 'discover':
-        return '💳 Discover';
       default:
         return '💳 Card';
     }
@@ -214,8 +209,6 @@ const PaymentOptions = () => {
                 >
                   <option value="Visa">Visa</option>
                   <option value="Mastercard">Mastercard</option>
-                  <option value="American Express">American Express</option>
-                  <option value="Discover">Discover</option>
                 </select>
               </div>
               

@@ -8,7 +8,7 @@ const Products = () => {
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     category: 'all',
-    priceRange: [0, 10000],
+    priceRange: [0, 100000],
     sortBy: 'newest'
   });
 
@@ -44,7 +44,7 @@ const Products = () => {
           rating: product.rating || 4,
           reviews: product.reviews || 0,
           currentPrice: product.price,
-          oldPrice: product.oldPrice || (Math.random() > 0.5 ? (product.price * 1.2).toFixed(2) : null),
+          oldPrice: product.oldPrice, // Use the actual oldPrice from the backend
           // Add image property that points to image_url for backward compatibility
           image: product.image_url,
         }));

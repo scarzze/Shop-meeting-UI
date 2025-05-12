@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
+import { validateUsername, validatePassword, isValidEmail } from '../utils/validation';
 import axios from 'axios';
 
 const Register = () => {
@@ -9,19 +10,78 @@ const Register = () => {
   const { login } = useAuth();
   const { fetchCartItems } = useContext(CartContext);
   const [notification, setNotification] = useState({ message: '', type: '' });
+  const [formErrors, setFormErrors] = useState({});
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
 
   const handleGoogleSignUp = () => {
     // TODO: Implement actual Google authentication
     console.log('Google sign-up clicked');
   };
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear error when user starts typing
+    if (formErrors[name]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    
+    // Validate username
+    const usernameValidation = validateUsername(formData.username);
+    if (!usernameValidation.isValid) {
+      errors.username = usernameValidation.message;
+    }
+    
+    // Validate email
+    if (!formData.email) {
+      errors.email = 'Email is required';
+    } else if (!isValidEmail(formData.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    
+    // Validate password
+    const passwordValidation = validatePassword(formData.password);
+    if (!passwordValidation.isValid) {
+      errors.password = passwordValidation.message;
+    }
+    
+    // Validate password confirmation
+    if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
+    
+    // Validate form before submission
+    if (!validateForm()) {
+      return;
+    }
+    
     const data = {
-      username: formData.get('username'),
-      email: formData.get('email'),
-      password: formData.get('password'),
+      username: formData.username,
+      email: formData.email,
+      password: formData.password,
     };
 
     try {
@@ -122,24 +182,58 @@ const Register = () => {
           </div>
 
           <form className="space-y-4" onSubmit={handleRegister}>
-            <input
-              type="text"
-              name="username"
-              placeholder="Username"
-              className="w-full border-b border-gray-300 py-2 focus:outline-none"
-            />
-            <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              className="w-full border-b border-gray-300 py-2 focus:outline-none"
-            />
-            <input
-              type="password"
-              name="password"
-              placeholder="Password"
-              className="w-full border-b border-gray-300 py-2 focus:outline-none"
-            />
+            <div>
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                placeholder="Username"
+                className={`w-full border-b ${formErrors.username ? 'border-red-500' : 'border-gray-300'} py-2 focus:outline-none`}
+              />
+              {formErrors.username && (
+                <p className="text-red-500 text-xs mt-1">{formErrors.username}</p>
+              )}
+            </div>
+            <div>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Email"
+                className={`w-full border-b ${formErrors.email ? 'border-red-500' : 'border-gray-300'} py-2 focus:outline-none`}
+              />
+              {formErrors.email && (
+                <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>
+              )}
+            </div>
+            <div>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Password"
+                className={`w-full border-b ${formErrors.password ? 'border-red-500' : 'border-gray-300'} py-2 focus:outline-none`}
+              />
+              {formErrors.password && (
+                <p className="text-red-500 text-xs mt-1">{formErrors.password}</p>
+              )}
+            </div>
+            <div>
+              <input
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Confirm Password"
+                className={`w-full border-b ${formErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'} py-2 focus:outline-none`}
+              />
+              {formErrors.confirmPassword && (
+                <p className="text-red-500 text-xs mt-1">{formErrors.confirmPassword}</p>
+              )}
+            </div>
             <button
               type="submit"
               className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-md w-full"

@@ -18,11 +18,14 @@ import Products from './pages/Products';
 import CategoryProducts from './pages/CategoryProducts';
 import FloatingContactButton from './components/contact';
 import FaqPage from './pages/FaqPage';
+import SearchResults from './pages/SearchResults';
+import ScrollToTop from './components/ScrollToTop';
 
 
 const App = () => {
   return (
     <div>
+      <ScrollToTop />
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
@@ -38,12 +41,11 @@ const App = () => {
         <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/faq" element={<FaqPage />} />
-        {/* <Route path="/search" element={<SearchResults />} /> */}
+        <Route path="/search" element={<SearchResults />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Footer />
       <FloatingContactButton />
-      {/* Add any other components you want to include globally */}
     </div>
   );
 };

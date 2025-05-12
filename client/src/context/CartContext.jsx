@@ -352,20 +352,27 @@ const CartProvider = ({ children }) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
+  // Check if a product is in the cart
+  const isInCart = useCallback((productId) => {
+    return cartItems.some(item => {
+      // Check both id and product_id to handle different formats
+      return (item.product_id === productId || item.id === productId);
+    });
+  }, [cartItems]);
+
   return (
-    <CartContext.Provider
-      value={{
-        cartItems,
-        cartTotal,
-        loading,
-        error,
-        addToCart,
-        updateCartItemQuantity,
-        removeFromCart,
-        clearCart,
-        fetchCartItems
-      }}
-    >
+    <CartContext.Provider value={{
+      cartItems,
+      cartTotal,
+      loading,
+      error,
+      fetchCartItems,
+      addToCart,
+      updateCartItemQuantity,
+      removeFromCart,
+      clearCart,
+      isInCart
+    }}>
       {children}
     </CartContext.Provider>
   );

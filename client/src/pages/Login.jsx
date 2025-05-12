@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
+import { validateUsername, validatePassword } from '../utils/validation';
 import axios from 'axios';
 
 const Login = () => {
@@ -10,6 +11,11 @@ const Login = () => {
   const { login } = useAuth();
   const { fetchCartItems } = useContext(CartContext);
   const [notification, setNotification] = useState({ message: '', type: '' });
+  const [formErrors, setFormErrors] = useState({});
+  const [formData, setFormData] = useState({
+    username: '',
+    password: ''
+  });
   
   // Get the path the user was trying to access before being redirected to login
   const from = location.state?.from?.pathname || '/';
@@ -21,14 +27,51 @@ const Login = () => {
 
   // Email verification state removed
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear error when user starts typing
+    if (formErrors[name]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    
+    // Validate username
+    const usernameValidation = validateUsername(formData.username);
+    if (!usernameValidation.isValid) {
+      errors.username = usernameValidation.message;
+    }
+    
+    // Validate password
+    const passwordValidation = validatePassword(formData.password);
+    if (!passwordValidation.isValid) {
+      errors.password = passwordValidation.message;
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
-    const username = formData.get('username');
-    const password = formData.get('password');
-
+    
+    // Validate form before submission
+    if (!validateForm()) {
+      return;
+    }
+    
     try {
-      const result = await login(username, password);
+      const result = await login(formData.username, formData.password);
       
       if (result.success) {
         setNotification({ message: 'Login successful', type: 'success' });
@@ -112,18 +155,39 @@ const Login = () => {
           </div>
 
           <form className="space-y-4" onSubmit={handleLogin}>
-            <input
-              type="text"
-              name="username"
-              placeholder="Username"
-              className="w-full border-b border-gray-300 py-2 focus:outline-none"
-            />
-            <input
-              type="password"
-              name="password"
-              placeholder="Password"
-              className="w-full border-b border-gray-300 py-2 focus:outline-none"
-            />
+            <div>
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                placeholder="Username"
+                className={`w-full border-b ${formErrors.username ? 'border-red-500' : 'border-gray-300'} py-2 focus:outline-none`}
+              />
+              {formErrors.username && (
+                <p className="text-red-500 text-xs mt-1">{formErrors.username}</p>
+              )}
+            </div>
+            <div>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Password"
+                className={`w-full border-b ${formErrors.password ? 'border-red-500' : 'border-gray-300'} py-2 focus:outline-none`}
+              />
+              {formErrors.password && (
+                <p className="text-red-500 text-xs mt-1">{formErrors.password}</p>
+              )}
+            </div>
+            <div className="flex justify-between items-center">
+              <label className="inline-flex items-center">
+                <input type="checkbox" className="form-checkbox h-4 w-4 text-red-500" />
+                <span className="ml-2 text-gray-700 text-sm">Remember me</span>
+              </label>
+              <Link to="/forgot-password" className="text-sm text-red-500 hover:underline">Forgot Password?</Link>
+            </div>
             <button
               type="submit"
               className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-md w-full"
@@ -134,7 +198,6 @@ const Login = () => {
               Don't have an account?{' '}
               <Link to="/register" className="text-red-500 hover:underline">Sign Up</Link>
             </p>
-            {/* Email verification UI removed */}
           </form>
         </div>
       </div>
